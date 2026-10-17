@@ -1,65 +1,166 @@
+<div align="center">
+
+<img src="apps/web/public/favicon.svg" alt="Dispeaker" width="56" />
+
 # Dispeaker
 
-[Versão em português](README.md)
+**Voice, screen sharing and chat for a group of friends, on its own media server.**
+Discord-style, with all of the realtime side written here: no LiveKit, Agora or Twilio.
 
-A Discord/TeamSpeak-style app for voice, screen sharing and text chat, with **all of the media and
-realtime infrastructure implemented in the project itself**: an SFU built on mediasoup, a
-WebSocket gateway with session resume and a signaling protocol typed end to end. No managed media
-or realtime service (LiveKit, Agora, Twilio, Firebase etc.).
+[Versão em português](README.md) · [Architecture](docs/architecture.md) · [Decisions (ADRs)](docs/adr/README.md)
 
-The interface is in Brazilian Portuguese, and so are the documents linked from this page.
+</div>
 
-![Voice channel with a 1080p screen share and the stats panel](docs/images/voz-transmissao.png)
+<br />
 
-![Text channel with a mention and the typing indicator](docs/images/chat.png)
+<img src="docs/readme/voz.png" alt="Cinema voice channel: Beatriz streams Cyberpunk 2077 at 1080p, with the statistics panel open and the member list showing who is playing" />
 
-## Features
+## About
 
-- **Voice channels** routed by our own SFU: mute, deafen, speaking indicator, automatic
-  reconnection, keyboard shortcuts, push-to-talk and a per-person volume.
-- **Noise suppression** with RNNoise running in the browser (WebAssembly), plus microphone,
-  output and camera selection.
-- **Camera** as VP8 simulcast, shown in each participant's tile.
-- **Screen sharing** with 3-layer VP8 simulcast, presets (720p30, 1080p30, 1080p60, 1440p60 and
-  source resolution up to 4K), system audio when the browser provides it, several streams at
-  once, focus mode, fullscreen and picture-in-picture.
-- **Watch on demand**: video is only forwarded to those who clicked to watch, and the simulcast
-  layer is chosen from the size at which the stream is displayed on each viewer's screen.
-- **Servers, channels and categories**, invites with expiration and a usage limit; profile
-  pictures and server icons.
-- **Roles and permissions** as bitflags, with hierarchy and per-channel overrides, enforced on the
-  server even during an ongoing call.
-- **Text chat** with editing, deletion, mentions, cursor pagination and "typing"; emoji and images
-  (PNG, JPEG, GIF, WebP) attached with a button, pasted or dropped, stored on disk and served under
-  the channel's permissions; reactions, replies, link previews, unread messages per channel and,
-  optionally, GIF search. The chat also opens next to a call.
-- **Context menus** (right click or long press) on channels, people and messages.
-- **Realtime gateway** in the style of Discord: heartbeat, sequence numbers and `resume`.
-- **Observability**: Prometheus metrics and a panel of real statistics (`getStats`) in the
-  interface.
+Dispeaker was built for a group of friends who play together and wanted to hear and watch each other without depending on anyone. It has run on a self-hosted VPS since October 2026, in the browser and as a Windows app. The interface is in Brazilian Portuguese.
+
+What sets it apart from a typical Discord clone is what sits under the interface. The media server is an SFU built on mediasoup; the realtime gateway, the signaling protocol and the desktop app's screen capture engine were written in the project itself. That is what makes it possible to stream a heavy full-screen game at 60 frames per second, and to measure, frame by frame, where a stream loses quality.
+
+- Responsive web and a Windows desktop app, with the same account and the same interface.
+- Self-hosted infrastructure: SFU, WebSocket gateway, TURN, Postgres and Redis, all in one `docker compose`.
+- Invite-only sign-up with an access code.
+- A "brutalist terminal" look: 1px-bordered panels, square corners and a single accent colour.
 
 ## Demo
 
-There is no public instance yet (deployment depends on a VM and a domain; the guide is in
-[docs/deploy.md](docs/deploy.md)). To see it working, it takes two commands and no external
-service — not even Docker is required:
+<p align="center">
+  <img src="docs/readme/demo.gif" alt="Samuel leaves the text channel, joins the Cinema voice channel, watches Beatriz's stream and opens the connection's real statistics" width="100%" />
+</p>
 
-```bash
-pnpm install
-pnpm dev        # http://localhost:5173
-```
+> Every picture in this README uses demo accounts with fictional data, on the local stack. The call, the stream and the numbers are real; only the camera, microphone and screen are synthetic.
 
-Open it in two windows (one of them incognito), create two accounts, create a server, generate an
-invite and join the voice channel with both. The lab at `/lab` exercises the media layer in
-isolation, without accounts: a peer-to-peer 1:1 call (`/lab/p2p`) and voice channels by nickname
-(`/lab/voice`).
+## Features
 
-## Architecture
+### Voice and streaming
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/chamada-chat.png" alt="Call with the stream in focus and the channel chat open beside it" /></td>
+    <td width="50%"><img src="docs/readme/transmissoes.png" alt="Measured streams page: frames per second at the streamer, the server and every viewer" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Chat beside the call</sub></td>
+    <td align="center"><sub>A stream's measurements</sub></td>
+  </tr>
+</table>
+
+- **Voice channels** with mute, deafen (which really stops sending audio), speaking indicator, automatic reconnection, push to talk and per-person volume, kept in the account.
+- **Neural noise suppression** in the browser (GTCRN in WebAssembly), with a filter of our own that restores the treble the model cuts. Opus voice at 128 kbps.
+- **Screen sharing** in H.264 on the GPU, with three presets (720p30, 1080p60 and 1440p30 for films), sound at 256 kbps, several at once, full screen and picture-in-picture.
+- **Watch on demand**: video only goes to those who clicked watch, and stops being sent when it leaves the screen.
+- **Real statistics** on every stream (resolution, frames per second, bitrate, loss, codec) and in the bottom bar (RTT, upload, download).
+- **Measured streams**: the streamer, the server and every viewer send samples every 5 seconds, and the page points to where along the path frames get lost.
+- **Camera** with simulcast.
+
+### Meetings by link
+
+<p align="center">
+  <img src="docs/readme/reuniao.gif" alt="A guest asks to join, the host lets her in and she writes in the meeting chat" width="100%" />
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/reuniao-porta.png" alt="Meeting entry screen: a name and the ask-to-join button" /></td>
+    <td width="50%"><img src="docs/readme/reuniao.png" alt="Meeting with three people, the participant list and the chat" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Arriving through the link</sub></td>
+    <td align="center"><sub>Inside the meeting</sub></td>
+  </tr>
+</table>
+
+- A Google Meet-style room outside any server: whoever has the link asks to join and someone inside lets them in.
+- **Guests without an account**, with just a name.
+- Voice, camera, screen sharing and chat. The host mutes for everyone, removes people and ends the meeting.
+- The room lives only in Redis and disappears, chat included, two minutes after the call empties.
+
+### Chat
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/chat.png" alt="Text channel with a reply, a mention, reactions and a poll" /></td>
+    <td width="50%"><img src="docs/readme/clipes.png" alt="Channel with an uploaded picture and reactions" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Replies, mentions, reactions and polls</sub></td>
+    <td align="center"><sub>Pictures and files</sub></td>
+  </tr>
+</table>
+
+- Editing, deleting, mentions, replies, reactions, polls, **threads** and typing indicators.
+- Pasted, dropped or attached pictures; files of any type; link previews; optional GIF search.
+- Attachments served with the channel's permissions: whoever cannot see the channel cannot open the file.
+- Unread state per channel and cursor pagination.
+
+### People and servers
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/conversa.png" alt="Private conversation, with the conversation list showing who is playing" /></td>
+    <td width="50%"><img src="docs/readme/pedido.png" alt="Message request from a non-friend, with accept, decline and block" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Private conversations</sub></td>
+    <td align="center"><sub>Message request</sub></td>
+  </tr>
+</table>
+
+- **Friends, private conversations and one-to-one calls**, with a ringtone.
+- **Message requests** from people who share a server but are not friends, and **blocking**.
+- **"Playing X"** next to the name of someone with a game open in the desktop app.
+- **Servers, categories and numbered channels**, invites with expiry and use limits.
+- **Roles and permissions** with hierarchy and per-channel overwrites, enforced on the server even during a call: losing the right to speak ends the voice session at once.
+- Preferences (volumes, mutes, privacy) that follow the account across devices.
+
+### Windows desktop app
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/download.png" alt="Download page of the Windows app" /></td>
+    <td width="50%"><img src="docs/readme/configuracoes.png" alt="Settings, keyboard shortcuts tab" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Download page</sub></td>
+    <td align="center"><sub>Global shortcuts</sub></td>
+  </tr>
+</table>
+
+- An Electron window onto the published site: whatever the site gains, the app gains without reinstalling.
+- **60 fps streaming a full-screen game**, with a capture engine of its own in Rust (see [below](#streaming-a-game-at-60-fps)).
+- **Global shortcuts** for mute, deafen, stream, camera and hang up that work with the game in focus. With a game in front, the stream shortcut streams that game without opening the picker.
+- A stream's sound carries only the game, without the call or other programs.
+- Detects the running game (Steam, Epic, Xbox, GOG and full-screen programs) with no external list and no internet.
+- Microphone, sound and hang-up buttons on the taskbar thumbnail; a tray icon showing the call state.
+- Automatic updates from the project's own server.
+
+### On a phone
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/readme/mobile-chat.png" alt="Chat on a phone" /></td>
+    <td width="33%"><img src="docs/readme/mobile-canais.png" alt="Channel list on a phone, with who is in each voice channel" /></td>
+    <td width="33%"><img src="docs/readme/mobile-voz.png" alt="Watching a stream on a phone" /></td>
+  </tr>
+</table>
+
+Channels and members in drawers, full-screen dialogs, call buttons with 44px touch targets and a call bar always at hand after leaving the voice channel.
+
+## How it works
 
 ```mermaid
 flowchart LR
-  subgraph Browser
-    WEB[React + mediasoup-client]
+  subgraph PC[User's computer]
+    WEB[Page: React + mediasoup-client]
+    subgraph DESK[Desktop app]
+      ELECTRON[Electron]
+      HOST[dispeaker-host<br/>Rust: games, monitors,<br/>game audio, GPU use]
+      CAP[dispeaker-capture<br/>Rust: capture + H.264]
+    end
   end
 
   subgraph Server
@@ -71,188 +172,176 @@ flowchart LR
     TURN[coturn<br/>STUN/TURN]
   end
 
+  ELECTRON --- WEB
+  ELECTRON -- "JSON lines" --- HOST
+  ELECTRON --- CAP
   WEB -- "HTTPS /api, WSS /api/gateway" --> CADDY
-  WEB -- "WSS /media/voice (signaling)" --> CADDY
+  WEB -- "WSS /media/voice" --> CADDY
   CADDY --> API
   CADDY --> MEDIA
-  WEB == "direct RTP/SRTP<br/>UDP/TCP 40000+" ==> MEDIA
-  WEB -. "relay when the network blocks it" .-> TURN
+  WEB == "WebRTC (RTP/SRTP)" ==> MEDIA
+  CAP == "RTP/SRTP direct" ==> MEDIA
+  WEB -. "when the network blocks" .-> TURN
   TURN -.-> MEDIA
   API --> PG
   API <--> REDIS
-  API <-- "authenticated internal RPC (WS)" --> MEDIA
+  API <-- "internal RPC (WS)" --> MEDIA
 ```
 
-Three services, each with one responsibility:
+| Service        | Does                                                                          | Does not                   |
+| -------------- | ----------------------------------------------------------------------------- | -------------------------- |
+| `apps/web`     | UI, media capture and playback, gateway and signaling clients                 | Decide permissions         |
+| `apps/api`     | Accounts, servers, permissions, chat, meetings, gateway, voice tokens         | Touch media                |
+| `apps/media`   | SFU: a router per channel, transports, producers, consumers, speech detection | Know users or the database |
+| `apps/desktop` | Window onto the site, global shortcuts, native programs, updates              | Have a UI of its own       |
 
-| Service      | Does                                                                                    | Does not                   |
-| ------------ | --------------------------------------------------------------------------------------- | -------------------------- |
-| `apps/web`   | Interface, media capture and playback, gateway and signaling clients                    | Decide permissions         |
-| `apps/api`   | Accounts, servers, permissions, chat, gateway, voice token issuance                     | Touch media                |
-| `apps/media` | SFU: one Router per voice channel, transports, producers, consumers, speaking detection | Know users or the database |
+- **The API decides.** To join a voice channel, the browser asks the API for a 60-second token stating what that person may do there (speak, stream). The media service only checks the signature and knows nothing about roles ([ADR 0004](docs/adr/0004-token-de-voz.md)).
+- **SFU, not a peer-to-peer mesh.** Each person sends their media once to the server, which forwards it without decoding. The streamer's upload does not grow with the number of viewers, and mute, deafen and revoked permissions hold on the server, not by the client's good will ([ADR 0001](docs/adr/0001-sfu-com-mediasoup.md)).
+- **Discord-style gateway**: heartbeat, sequence numbers and a `resume` that redelivers exactly what was lost in a drop; events cross API instances through Redis ([ADR 0006](docs/adr/0006-gateway-resume.md)).
+- **Everything that crosses a process boundary is validated** with a Zod schema from `packages/shared`: HTTP bodies, gateway frames, the internal RPC and the protocol with the native programs. Types are inferred from the schemas.
 
-The media service does not query the database and does not know what a role is. The API decides
-whether someone may join a channel, and hands the browser a **60-second voice token** stating what
-that person can do there (speak, stream). The media service only validates the signature:
+### Streaming a game at 60 fps
 
-```mermaid
-sequenceDiagram
-  participant N as Browser
-  participant A as API
-  participant M as Media (SFU)
+Reaching 60 fps with a heavy full-screen game was the hardest problem in the project, and each step was chosen from the measurements page:
 
-  N->>A: POST /channels/:id/voice-token
-  A->>A: computes permissions (roles + channel overrides)
-  A-->>N: token (60 s) + ICE servers
-  N->>M: WSS /media/voice?token=...
-  M->>M: validates signature and expiration
-  N->>M: join, createTransport, produce (microphone)
-  M-->>A: voice-state (internal RPC)
-  A-->>N: VOICE_STATE_UPDATE to the whole server (gateway)
-  Note over N,M: audio and video flow directly between browser and SFU
-  A->>M: disconnectUser, if the person loses the permission
-```
+| Stage                    | What limited it                                                       | Frames per second           |
+| ------------------------ | --------------------------------------------------------------------- | --------------------------- |
+| Chrome, 3 video layers   | three layers doubled the GPU encoder's time (15 + 9 + 6 ms per frame) | 15 to 24                    |
+| Chrome, 1 layer          | Windows 11 wakes a program with a covered window only every 15.6 ms   | 26 to 31                    |
+| Desktop app              | the app asks Windows to exempt it, which a site cannot do             | 45 to 51                    |
+| App with the Rust engine | capture and encoding outside Chromium: 5 ms per frame on the GPU      | **60**, p95 frame gap 19 ms |
 
-More details in [docs/architecture.md](docs/architecture.md); the decisions and their alternatives
-are in [docs/adr](docs/adr/README.md).
+Measured on an RX 7800 XT with Cyberpunk 2077 at 1080p60. The engine (`apps/desktop/native/capture`) captures through Desktop Duplication, converts to NV12 on the GPU, encodes H.264 through Media Foundation and sends RTP/SRTP straight to the SFU, retransmitting lost packets and adapting the bitrate to loss ([ADR 0013](docs/adr/0013-motor-de-transmissao-nativo.md)).
 
-## Why an SFU and not a mesh
+## Tech stack
 
-In a peer-to-peer mesh each participant sends their media to every other one. With _N_ people
-that is _N − 1_ uploads per person and _N × (N − 1)_ connections in total: 4 people are already 12
-streams, and a 1080p screen share for 7 viewers would require 7 encodings or 7 uploads of 3 Mbps
-from the streamer's home. The home upload runs out before the sixth friend.
+| Layer    | Tools                                                                     |
+| -------- | ------------------------------------------------------------------------- |
+| Web      | React 19, Vite, Tailwind CSS 4, mediasoup-client, TanStack Query, Zustand |
+| API      | Fastify 5, WebSocket, Zod, OpenAPI (`/docs`), Drizzle ORM                 |
+| Media    | Node, mediasoup 3 (C++ workers)                                           |
+| Desktop  | Electron; Rust with DXGI, Direct3D 11, Media Foundation and WASAPI        |
+| Data     | PostgreSQL, Redis (presence, voice state, meetings, pub/sub)              |
+| Voice    | GTCRN and RNNoise in WebAssembly, a custom AudioWorklet                   |
+| Tests    | Vitest, Playwright (Electron app included), k6                            |
+| Infra    | Docker Compose, Caddy (automatic HTTPS), coturn, GitHub Actions           |
+| Monorepo | pnpm workspaces, Turborepo, TypeScript `strict`                           |
 
-With an SFU (_Selective Forwarding Unit_) each person sends **once** to the server, which relays
-the packets to whoever should receive them, without decoding anything. That changes three things:
+## Getting started
 
-1. **Each person's upload is constant**, no matter how many are in the channel.
-2. **The server chooses what to forward.** That is what allows simulcast (each viewer receives the
-   layer that fits their screen and their network), "watch on demand" and a deafen that actually
-   saves bandwidth, because the audio stops being sent instead of just being silenced on the
-   client.
-3. **Rules are enforced on the server.** Muting pauses the producer in the SFU; losing the
-   permission to stream drops the session. In a mesh, all of that would be a polite request to the
-   client.
+### Requirements
 
-The price is having a media server to operate, and that is precisely the part this project sets
-out to build. The 1:1 mesh call remains in the repository (`/lab/p2p`) as a reference and shares
-the same protocol layer.
+- Node.js 22.12 or newer
+- pnpm 11
+- Docker is optional: without it, the project starts an embedded Postgres and Redis.
 
-## Stack
+### Steps
 
-| Layer    | Technology                                                                      |
-| -------- | ------------------------------------------------------------------------------- |
-| Monorepo | pnpm workspaces, Turborepo, TypeScript `strict`                                 |
-| Web      | React 19, Vite, Tailwind 4, mediasoup-client, TanStack Query, Zustand           |
-| API      | Fastify 5, `@fastify/websocket`, Zod, OpenAPI (`/docs`), Drizzle ORM            |
-| Media    | Node, mediasoup 3 (C++ workers), `ws`                                           |
-| Data     | PostgreSQL (SQL migrations), Redis (presence, voice state, pub/sub, rate limit) |
-| Tests    | Vitest (unit and integration), Playwright (e2e), k6 (load)                      |
-| Infra    | Docker, docker-compose, Caddy (automatic HTTPS), coturn, GitHub Actions         |
-
-## Running it
-
-Requirements: Node 22.12+ and pnpm 11. Docker is optional in development.
+1. **Clone the repository and install dependencies**
 
 ```bash
+git clone https://github.com/SamuelSousaDEV/Dispeak.git
+cd Dispeak
 pnpm install
-pnpm dev
 ```
 
-`pnpm dev` starts Postgres and Redis (through `docker-compose.yml` if Docker is available;
-otherwise, embedded instances with data in `.dev/`), applies the migrations and starts web (5173),
-API (4000) and media (4100, plus the RTC ports from 40000 up) in watch mode.
+2. **Start the development stack**
 
-| Command                          | What it does                                                       |
-| -------------------------------- | ------------------------------------------------------------------ |
-| `pnpm dev`                       | Full stack in development                                          |
-| `pnpm dev:docker`                | Same, with the media service in a container                        |
-| `pnpm check`                     | Lint, formatting, typecheck and tests                              |
-| `pnpm e2e`                       | End-to-end tests (starts the stack itself)                         |
-| `pnpm build && pnpm start:local` | Production builds running locally, without Docker                  |
-| `pnpm prod:up`                   | Production with Docker: Caddy, API, media, Postgres, Redis, coturn |
+```bash
+pnpm dev        # http://localhost:5173
+```
 
-Environment notes:
+It starts Postgres and Redis, applies migrations and runs web (5173), API (4000) and media (4100, plus RTC ports from 40000). No configuration is required; each app has a commented `.env.example`.
 
-- **mediasoup on Windows:** the package ships the prebuilt worker, so the media service runs
-  natively, without compiling anything. If the binary does not suit your machine, `pnpm dev:docker`
-  runs just that service in a container.
-- **Other devices on the local network:** the browser only grants the microphone in a secure
-  context. Run with `DEV_HTTPS=1 pnpm dev` and open `https://<machine-ip>:5173`. The media service
-  already announces the LAN IP in addition to `127.0.0.1`.
-- **Configuration:** each app has a commented `.env.example`; nothing is required in development.
+3. **Try it**
 
-Production is one command after filling in `.env.prod` — step by step, ports and firewall in
-[docs/deploy.md](docs/deploy.md).
+Open two windows (one private), create two accounts, create a server, make an invite and join the voice channel with both. To try it from a phone on the same network, run `DEV_HTTPS=1 pnpm dev` and open `https://<machine-ip>:5173` (browsers only allow the microphone over a secure connection).
+
+### Production
+
+With Docker and a filled-in `.env.prod`, `pnpm prod:up` starts Caddy, API, media, Postgres, Redis and coturn. Steps, ports and firewall in [docs/deploy.md](docs/deploy.md) (in Portuguese). With `REGISTRATION_CODE` set, sign-up asks for an access code.
+
+## Scripts
+
+```bash
+pnpm dev                    # Full stack in development
+pnpm dev:docker             # Same, with the media service in a container
+pnpm check                  # Lint + formatting + typecheck + tests
+pnpm test                   # Unit and integration tests
+pnpm e2e                    # End-to-end tests (starts the stack itself)
+pnpm build && pnpm start:local   # Production builds, locally
+pnpm prod:up                # Production with Docker
+pnpm release:desktop        # Builds the app installer and uploads it to the server
+```
+
+## Project layout
+
+```
+apps/
+├── web/        # React: features/{voice,streams,meetings,chat,friends,guilds,gateway,desktop}, e2e/
+├── api/        # Fastify: modules/{auth,guilds,messages,voice,meetings,streams,friends}, gateway/, db/
+├── media/      # mediasoup: rooms/{room,peer,room-manager}, signaling/
+└── desktop/    # Electron: window, screen picker, shortcuts, updates
+    └── native/ # capture/ and host/ in Rust
+packages/
+└── shared/     # Zod schemas: RPC, signaling, gateway, REST, permissions, native process
+deploy/         # Caddyfile
+docs/           # Architecture, deploy, load test, ADRs
+load/           # k6 scripts and raw results
+scripts/        # Dev, local production, native build and release orchestration
+```
 
 ## Tests
 
 ```
-pnpm test    265 tests   permissions, RPC protocol, API (real Postgres and Redis),
-                         SFU (real mediasoup workers), client reducers
-pnpm e2e       8 tests   Chromium with synthetic camera, microphone and screen
+pnpm test    465 tests   permissions, RPC protocol, API with real Postgres and Redis,
+                         SFU with real mediasoup workers, client state
+pnpm e2e      18 tests   Chromium with synthetic camera, microphone and screen;
+                         the desktop app with the real capture engine
 ```
 
-The integration tests do not mock infrastructure. A few worth reading:
+Integration tests use no infrastructure mocks. A few worth reading:
 
-- [`apps/media/test/voice.test.ts`](apps/media/test/voice.test.ts) asks the mediasoup worker itself
-  (`worker.dump()`) whether any router or transport is left after everyone leaves the channel.
-- [`packages/shared/src/permissions.test.ts`](packages/shared/src/permissions.test.ts) covers the
-  permission calculation: overrides, category inheritance, role hierarchy.
-- [`apps/api/test/gateway.test.ts`](apps/api/test/gateway.test.ts) drops connections and checks
-  that `resume` redelivers exactly what was lost, and starts two API instances to check event
-  delivery between them through Redis.
-- [`apps/web/e2e/app.spec.ts`](apps/web/e2e/app.spec.ts) goes through create account → create
-  server → invite → join voice → stream, and removes permissions in the middle of the call.
+- [`apps/media/test/voice.test.ts`](apps/media/test/voice.test.ts) asks the mediasoup worker itself whether any router or transport is left after everyone leaves the channel.
+- [`apps/api/test/gateway.test.ts`](apps/api/test/gateway.test.ts) drops connections and checks that `resume` redelivers exactly what was lost, across two API instances.
+- [`apps/web/e2e/app.spec.ts`](apps/web/e2e/app.spec.ts) goes through sign-up, server, invite, voice and streaming, and revokes permissions mid-call.
+- [`apps/web/e2e/ingest.spec.ts`](apps/web/e2e/ingest.spec.ts) streams through the native engine and watches from a browser with and without a GPU.
 
-## Load test
+### Load test
 
-Measured on the production builds, on a single machine (Ryzen 7 5700G, 8 cores), with the load
-generator on the same machine. Methodology, full tables and raw files in
-[docs/load-test.md](docs/load-test.md).
+Production builds on a single machine (Ryzen 7 5700G), details in [docs/load-test.md](docs/load-test.md):
 
-| Scenario                                         | Result                                                               |
-| ------------------------------------------------ | -------------------------------------------------------------------- |
-| API, 200 virtual users, 168 req/s                | p95 of 34 ms, 0% errors, 0.8 core                                    |
-| API, 500 virtual users                           | saturates: same throughput (161 req/s), p95 of 3.4 s                 |
-| Gateway, 500 connections on one server, 10 msg/s | delivery with p95 of 26 ms, 6.5 thousand events/s, 0.44 core         |
-| Voice + screen, 16 people, 1 stream in 1080p     | 255 consumers, mediasoup worker at 0.49 core                         |
-| Voice + screen, 24 people                        | 391 consumers, worker at 0.58 core; the bottleneck was the generator |
-
-The limit found is in the API, not in the SFU: one Node process recomputing the server state on
-every request handles about 170 req/s on this hardware. The voice load test also found a real
-defect, now fixed: when system audio capture failed, the whole stream was aborted instead of
-carrying on with video only.
-
-## Layout
-
-```
-apps/
-  web/      React: features/{auth,gateway,guilds,chat,voice,app}, e2e/, load/
-  api/      Fastify: modules/{auth,guilds,messages,voice}, gateway/, db/, drizzle/
-  media/    mediasoup: rooms/{room,peer,room-manager}, signaling/{voice,internal}-server
-packages/
-  shared/   Zod schemas: RPC protocol, signaling, gateway, REST, permissions
-deploy/     Caddyfile
-docs/       architecture, deploy, load test, ADRs
-load/       k6 scripts and raw results
-scripts/    dev and local-production orchestration
-```
+| Scenario                                    | Result                                       |
+| ------------------------------------------- | -------------------------------------------- |
+| API, 200 virtual users                      | 168 req/s, p95 34 ms, 0% errors              |
+| Gateway, 500 connections in one server      | delivery p95 26 ms, 6.5k events/s            |
+| Voice + screen, 24 people, one 1080p stream | 391 consumers, mediasoup worker at 0.58 core |
 
 ## Known limitations
 
-- A single instance of the media service. The internal RPC and the tokens were designed for
-  several nodes, but there is no channel routing between media nodes.
-- A voice channel lives in one worker (one core). Dozens of people in a channel fit comfortably;
-  hundreds would require chaining routers (`pipeToRouter`).
-- The gateway `resume` is local to the API instance (see
-  [ADR 0006](docs/adr/0006-gateway-resume.md)).
-- No recording, no camera in voice channels, no direct messages, no file uploads.
+- One media service instance; a voice channel lives on one core (dozens of people fit, hundreds do not).
+- The capture engine was validated on AMD GPUs; NVIDIA and Intel use the same path but have not been tested yet.
+- Desktop app for Windows only and unsigned, so Windows warns on first install.
+- No recording and no group private conversations.
 
-What still depends on manual validation or external infrastructure is in [ROADMAP.md](ROADMAP.md),
-under "Pendências".
+What still depends on manual validation is in the [ROADMAP](ROADMAP.md) (in Portuguese).
+
+## README pictures
+
+The pictures come from a script, run against the local stack with fictional data:
+
+```bash
+pnpm dev
+STREAM_IMAGE=<path to a .jpg> pnpm --filter @frequencia/web readme:seed
+STREAM_IMAGE=<the same file>  pnpm --filter @frequencia/web readme:shots
+```
+
+`STREAM_IMAGE` is what the demo account streams. The files are written to `docs/readme/`.
 
 ## License
 
 [MIT](LICENSE).
+
+## Author
+
+- **Samuel Sousa**: [github.com/SamuelSousaDEV](https://github.com/SamuelSousaDEV)

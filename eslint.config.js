@@ -44,7 +44,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**', '**/load/**', '**/*.config.{js,ts}'],
+    files: ['scripts/**', '**/load/**', 'apps/web/readme/**', '**/*.config.{js,ts}'],
     rules: { 'no-console': 'off' },
   },
   {

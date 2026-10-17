@@ -22,3 +22,6 @@ test-results
 
 # The ffmpeg the desktop app ships with (scripts/fetch-ffmpeg.mjs)
 apps/desktop/vendor
+
+# Ids and password of the fictional README data (apps/web/readme/seed.ts)
+apps/web/readme/.demo.json
