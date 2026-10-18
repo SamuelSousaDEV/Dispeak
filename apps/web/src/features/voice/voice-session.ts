@@ -1107,7 +1107,8 @@ export class VoiceSession {
     const volume = own * settings.outputVolume;
     // iPhones ignore `volume`; silencing someone still works there through `muted`.
     audio.volume = volume;
-    audio.muted = get().deafened || volume === 0;
+    // Deafen silences the call; the sound of a stream being watched is apart from it.
+    audio.muted = (source === 'mic' && get().deafened) || volume === 0;
   }
 
   /** Sends remote audio to the output device chosen in the settings, where supported. */

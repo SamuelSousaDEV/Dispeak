@@ -94,6 +94,45 @@ describe('screen sharing', () => {
     expect(h.server.rooms.stats().totals.consumers).toBe(0);
   });
 
+  it('keeps the sound of a stream flowing to a deafened viewer, and holds only voices', async () => {
+    const alice = await h.joinAs({ name: 'Alice' });
+    const carla = await h.joinAs({ name: 'Carla' });
+    const aliceShare = await share(alice, { audio: true });
+    const voice = await alice.rpc.request('produce', {
+      transportId: aliceShare.transportId,
+      kind: 'audio',
+      source: 'mic',
+      rtpParameters: opusRtpParameters(),
+    });
+
+    await openTransport(carla, 'recv');
+    for (const producerId of [voice.producerId, aliceShare.audio as string]) {
+      const { consumerId } = await carla.rpc.request('consume', { producerId });
+      await carla.rpc.request('resumeConsumer', { consumerId });
+    }
+    const paused = () =>
+      Object.fromEntries(peerStats(carla).consumers.map((c) => [c.source, c.paused]));
+
+    await carla.rpc.request('setState', { muted: false, deafened: true });
+    expect(paused()).toEqual({ mic: true, 'screen-audio': false });
+
+    await carla.rpc.request('setState', { muted: false, deafened: false });
+    expect(paused()).toEqual({ mic: false, 'screen-audio': false });
+  });
+
+  it('starts the sound of a stream watched while deafened', async () => {
+    const alice = await h.joinAs();
+    const carla = await h.joinAs({}, { deafened: true });
+    const aliceShare = await share(alice, { audio: true });
+
+    await openTransport(carla, 'recv');
+    const { consumerId } = await carla.rpc.request('consume', {
+      producerId: aliceShare.audio as string,
+    });
+    await carla.rpc.request('resumeConsumer', { consumerId });
+    expect(peerStats(carla).consumers[0]?.paused).toBe(false);
+  });
+
   it('lets each viewer choose its own simulcast layer', async () => {
     const alice = await h.joinAs();
     const small = await h.joinAs();

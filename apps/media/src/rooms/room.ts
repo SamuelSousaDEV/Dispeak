@@ -545,8 +545,9 @@ export class Room {
   async resumeConsumer(peer: Peer, consumerId: string): Promise<void> {
     const consumer = this.getConsumer(peer, consumerId);
     consumer.appData.wanted = true;
-    // Deafen holds every audio consumer paused on the server, saving the bandwidth too.
-    if (peer.deafened && consumer.kind === 'audio') return;
+    // Deafen holds voices paused on the server, saving the bandwidth too. The sound of a
+    // stream is not part of the call and keeps flowing.
+    if (peer.deafened && consumer.appData.source === 'mic') return;
     await consumer.resume();
     this.syncViewers(consumer.producerId);
   }
@@ -590,7 +591,7 @@ export class Room {
       await (muted ? producer.pause() : producer.resume());
     }
     for (const consumer of peer.consumers.values()) {
-      if (consumer.kind !== 'audio') continue;
+      if (consumer.appData.source !== 'mic') continue;
       if (deafened) await consumer.pause();
       else if (consumer.appData.wanted) await consumer.resume();
     }
