@@ -340,7 +340,7 @@ STREAM_IMAGE=<the same file>  pnpm --filter @frequencia/web readme:shots
 
 ## License
 
-[MIT](LICENSE).
+All rights reserved. See [LICENSE](LICENSE).
 
 ## Author
 

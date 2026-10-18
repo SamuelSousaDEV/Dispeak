@@ -2,7 +2,7 @@
   "name": "frequencia",
   "version": "0.1.0",
   "private": true,
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "engines": {

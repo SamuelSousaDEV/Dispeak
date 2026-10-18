@@ -1,21 +1,40 @@
-MIT License
+Copyright (c) 2026 Samuel Sousa. All rights reserved.
 
-Copyright (c) 2026 Samuel Sousa
+This software and its source code, documentation, images and other files
+(the "Software") are the exclusive property of the copyright holder.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+No license is granted. Without prior written permission from the copyright
+holder, no one may copy, modify, merge, publish, distribute, sublicense, sell,
+host, run as a service, or create derivative works of the Software, in whole or
+in part. Viewing the source code where it is published does not grant any of
+these rights.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Third-party components distributed with the Software (for example the FFmpeg
+build bundled with the desktop app) remain under their own licenses, which are
+included with them.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+---
+
+Copyright (c) 2026 Samuel Sousa. Todos os direitos reservados.
+
+Este software e seu código-fonte, documentação, imagens e demais arquivos (o
+"Software") são propriedade exclusiva do titular dos direitos autorais.
+
+Nenhuma licença é concedida. Sem autorização prévia e por escrito do titular,
+ninguém pode copiar, modificar, combinar, publicar, distribuir, sublicenciar,
+vender, hospedar, oferecer como serviço ou criar obras derivadas do Software,
+no todo ou em parte. Ver o código-fonte onde ele estiver publicado não concede
+nenhum desses direitos.
+
+Componentes de terceiros distribuídos com o Software (por exemplo, a versão do
+FFmpeg incluída no aplicativo de desktop) continuam sob suas próprias licenças,
+que acompanham esses componentes.
+
+O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIA DE QUALQUER
+TIPO, EXPRESSA OU IMPLÍCITA. EM NENHUMA HIPÓTESE O TITULAR SERÁ RESPONSÁVEL POR
+QUALQUER RECLAMAÇÃO, DANO OU OUTRA RESPONSABILIDADE DECORRENTE DO USO DO
 SOFTWARE.
