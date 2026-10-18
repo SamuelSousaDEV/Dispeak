@@ -21,6 +21,11 @@ export interface ScreenShareState {
   hasAudio: boolean;
   /** The captured sound includes the call itself: viewers may hear their own voices back. */
   echoRisk: boolean;
+  /**
+   * The sound is everything the PC plays, other voice chats (Discord) included: a whole screen
+   * shared from a browser, or an app that could not tell programs apart.
+   */
+  voiceChatRisk: boolean;
   /** What goes out as sound, for the panel; `null` when it is everything the PC plays. */
   audioSource: string | null;
   /** Local capture, shown as the streamer's own preview. */
@@ -133,6 +138,7 @@ export const screenOff: ScreenShareState = {
   preset: null,
   hasAudio: false,
   echoRisk: false,
+  voiceChatRisk: false,
   audioSource: null,
   stream: null,
   error: null,

@@ -220,6 +220,17 @@ export function UserPanel({
                 QUEM ASSISTE PODE OUVIR A PRÓPRIA VOZ — TRANSMITA UMA ABA EM VEZ DA TELA INTEIRA
               </p>
             )}
+            {screen.voiceChatRisk && !screen.echoRisk && (
+              <p
+                role="status"
+                className="label mt-1.5 text-danger"
+                data-testid="screen-voice-chat-risk"
+              >
+                {desktop
+                  ? 'O SOM DO PC INTEIRO VAI JUNTO, COM AS VOZES DO DISCORD'
+                  : 'O SOM DO PC INTEIRO VAI JUNTO, COM AS VOZES DO DISCORD — PELO APP, SÓ O JOGO VAI'}
+              </p>
+            )}
             {(camera.error ?? screen.error) && (
               <p role="alert" className="label mt-1.5 text-danger">
                 {camera.error ?? screen.error}

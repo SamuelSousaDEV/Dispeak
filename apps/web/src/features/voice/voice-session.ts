@@ -120,6 +120,15 @@ function capturesOwnAudio(video: MediaStreamTrack, audio: MediaStreamTrack | und
   return supported !== true || applied === false;
 }
 
+/** A whole monitor with sound: everything the PC plays goes out, Discord's voices included. */
+function capturesWholeSystem(
+  video: MediaStreamTrack,
+  audio: MediaStreamTrack | undefined,
+): boolean {
+  const surface = (video.getSettings() as { displaySurface?: string }).displaySurface;
+  return Boolean(audio) && surface === 'monitor';
+}
+
 /** What the panel says goes out as the stream's sound. */
 function audioSourceOf(gameAudio: GameAudio | null): string | null {
   if (!gameAudio) return null;
@@ -1218,6 +1227,10 @@ export class VoiceSession {
           Boolean(this.screenAudioProducer) &&
           !this.gameAudio &&
           capturesOwnAudio(videoTrack, audioTrack),
+        voiceChatRisk:
+          Boolean(this.screenAudioProducer) &&
+          !this.gameAudio &&
+          capturesWholeSystem(videoTrack, audioTrack),
         audioSource: this.screenAudioProducer ? audioSourceOf(this.gameAudio) : null,
         stream: screenStream,
         error: null,
@@ -1396,6 +1409,7 @@ export class VoiceSession {
         preset: presetId,
         hasAudio: Boolean(this.screenAudioProducer),
         echoRisk: Boolean(this.screenAudioProducer) && Boolean(this.nativeAudio?.echoRisk),
+        voiceChatRisk: Boolean(this.screenAudioProducer) && !this.gameAudio,
         audioSource: this.screenAudioProducer ? audioSourceOf(this.gameAudio) : null,
         stream: this.nativePreview?.stream ?? null,
         error: null,

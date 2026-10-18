@@ -90,6 +90,13 @@ export function ScreenShareButton({
             QUEM ASSISTE PODE OUVIR A PRÓPRIA VOZ — TRANSMITA UMA ABA EM VEZ DA TELA INTEIRA
           </span>
         )}
+        {screen.voiceChatRisk && !screen.echoRisk && (
+          <span role="status" className="label text-danger" data-testid="screen-voice-chat-risk">
+            {desktop
+              ? 'O SOM DO PC INTEIRO VAI JUNTO, COM AS VOZES DO DISCORD'
+              : 'O SOM DO PC INTEIRO VAI JUNTO, COM AS VOZES DO DISCORD — PELO APP, SÓ O JOGO VAI'}
+          </span>
+        )}
       </div>
     );
   }
