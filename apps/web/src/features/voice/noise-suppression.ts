@@ -25,8 +25,12 @@ const GATE_HOLD_MS = 180;
 const GATE_HYSTERESIS_DB = 6;
 /** Below the lowest voices (a deep male voice starts around 85 Hz, and is carried by its harmonics). */
 const RUMBLE_CUTOFF_HZ = 100;
-/** Two biquads with these Q values in series make a fourth-order Butterworth filter. */
-const RUMBLE_FILTER_Q = [0.5412, 1.3066];
+/**
+ * Two biquads with these Q values in series make a fourth-order Butterworth filter. Web Audio
+ * reads the Q of a high-pass in decibels: given as plain numbers (until 2026-10-18) both
+ * sections resonated and lifted 100-200 Hz by up to 3.7 dB, a boomy, muffled voice.
+ */
+const RUMBLE_FILTER_Q = [0.5412, 1.3066].map((q) => 20 * Math.log10(q));
 
 /**
  * The neural models that can clean the microphone. RNNoise works on the full band (48 kHz).
