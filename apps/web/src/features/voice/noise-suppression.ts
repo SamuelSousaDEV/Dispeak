@@ -88,16 +88,8 @@ export async function processMicrophone(
   { model, gateThresholdDb, leveler, gain }: MicrophoneProcessing,
 ): Promise<ProcessedTrack> {
   const context = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
-  const gated = model !== null && gateThresholdDb !== null;
   try {
-    const [binary] = await Promise.all([
-      model ? loadModel(model) : null,
-      model
-        ? context.audioWorklet.addModule(model === 'gtcrn' ? gtcrnWorkletUrl : rnnoiseWorkletUrl)
-        : null,
-      model === 'gtcrn' ? context.audioWorklet.addModule(highbandRestoreUrl) : null,
-      gated ? context.audioWorklet.addModule(noiseGateWorkletUrl) : null,
-    ]);
+    const binary = await loadChainModules(context, { model, gateThresholdDb, leveler, gain });
     // A context created outside a user gesture can start suspended and never produce audio.
     await Promise.race([
       context.resume(),
@@ -105,79 +97,16 @@ export async function processMicrophone(
     ]);
     if (context.state !== 'running') throw new Error(`audio context is ${context.state}`);
 
-    const nodes: AudioNode[] = [context.createMediaStreamSource(new MediaStream([source]))];
-    if (model) {
-      // Wind, breath on the capsule and desk thumps live below the voice, where the models are
-      // at their weakest: a steep high-pass (24 dB per octave) takes them out before the model.
-      for (const q of RUMBLE_FILTER_Q) {
-        const highpass = context.createBiquadFilter();
-        highpass.type = 'highpass';
-        highpass.frequency.value = RUMBLE_CUTOFF_HZ;
-        highpass.Q.value = q;
-        nodes.push(highpass);
-      }
-    }
-    const denoiser =
-      model && binary
-        ? model === 'gtcrn'
-          ? new GtcrnWorkletNode(context, { maxChannels: 1, wasmBinary: binary })
-          : new RnnoiseWorkletNode(context, { maxChannels: 1, wasmBinary: binary })
-        : null;
-    // What goes into the model, for the treble it cannot keep.
-    const beforeModel = nodes.at(-1);
-    if (denoiser) nodes.push(denoiser);
-    if (model === 'gtcrn' && beforeModel) {
-      const restore = new AudioWorkletNode(context, 'highband-restore', {
-        numberOfInputs: 2,
-        outputChannelCount: [1],
-        channelCount: 1,
-        channelCountMode: 'explicit',
-      });
-      // Input 0 (the model's output) is wired with the rest of the chain below.
-      beforeModel.connect(restore, 0, 1);
-      nodes.push(restore);
-    }
-    if (gated) {
-      nodes.push(
-        new NoiseGateWorkletNode(context, {
-          openThreshold: gateThresholdDb,
-          closeThreshold: gateThresholdDb - GATE_HYSTERESIS_DB,
-          holdMs: GATE_HOLD_MS,
-          maxChannels: 1,
-        }),
-      );
-    }
-    if (leveler) {
-      // Brings the loud moments down and raises the rest: the node makes up for what it takes
-      // away by itself, so no gain is added here. Measured: a voice captured at -25 dBFS (where
-      // browsers leave it, faint next to other apps) goes out at -15, a quiet one at -40 goes
-      // out at -29, and a shout at -3 stays at -7.
-      const compressor = context.createDynamicsCompressor();
-      compressor.threshold.value = -30;
-      compressor.knee.value = 12;
-      compressor.ratio.value = 3;
-      compressor.attack.value = 0.005;
-      compressor.release.value = 0.2;
-      nodes.push(compressor);
-    }
-    const volume = context.createGain();
-    volume.gain.value = gain;
-    nodes.push(volume);
-    // A wall just below full scale: a shout or a boosted microphone never clips.
-    const limiter = context.createDynamicsCompressor();
-    limiter.threshold.value = -3;
-    limiter.knee.value = 0;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.001;
-    limiter.release.value = 0.1;
-    nodes.push(limiter);
-
+    const chain = buildChain(
+      context,
+      context.createMediaStreamSource(new MediaStream([source])),
+      { model, gateThresholdDb, leveler, gain },
+      binary,
+    );
+    const { nodes, denoiser } = chain;
     const output = context.createMediaStreamDestination();
+    nodes.at(-1)?.connect(output);
     nodes.push(output);
-    for (const [index, node] of nodes.entries()) {
-      const next = nodes[index + 1];
-      if (next) node.connect(next);
-    }
     const [track] = output.stream.getAudioTracks();
     if (!track) throw new Error('audio graph produced no track');
 
@@ -203,4 +132,116 @@ export async function processMicrophone(
     context.close().catch(() => undefined);
     throw error;
   }
+}
+
+/** The nodes of a chain, wired in order from the input; the last one is its output. */
+export interface Chain {
+  nodes: AudioNode[];
+  denoiser: GtcrnWorkletNode | RnnoiseWorkletNode | null;
+}
+
+/**
+ * Wires the chain — rumble filter, model, treble restore, gate, leveler, volume, limiter —
+ * behind `input`, in any audio context: the live one of a call, or an offline one that renders
+ * a recording the same way (the voice test). The worklets of the chain must be loaded already
+ * (`loadChainModules`), and `binary` is the model's.
+ */
+export function buildChain(
+  context: BaseAudioContext,
+  input: AudioNode,
+  { model, gateThresholdDb, leveler, gain }: MicrophoneProcessing,
+  binary: ArrayBuffer | null,
+): Chain {
+  const gated = model !== null && gateThresholdDb !== null;
+  const nodes: AudioNode[] = [input];
+  if (model) {
+    // Wind, breath on the capsule and desk thumps live below the voice, where the models are
+    // at their weakest: a steep high-pass (24 dB per octave) takes them out before the model.
+    for (const q of RUMBLE_FILTER_Q) {
+      const highpass = context.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = RUMBLE_CUTOFF_HZ;
+      highpass.Q.value = q;
+      nodes.push(highpass);
+    }
+  }
+  // The library types ask for an AudioContext, but only hand it on to AudioWorkletNode, which
+  // takes an offline context just as well.
+  const workletContext = context as AudioContext;
+  const denoiser =
+    model && binary
+      ? model === 'gtcrn'
+        ? new GtcrnWorkletNode(workletContext, { maxChannels: 1, wasmBinary: binary })
+        : new RnnoiseWorkletNode(workletContext, { maxChannels: 1, wasmBinary: binary })
+      : null;
+  // What goes into the model, for the treble it cannot keep.
+  const beforeModel = nodes.at(-1);
+  if (denoiser) nodes.push(denoiser);
+  if (model === 'gtcrn' && beforeModel) {
+    const restore = new AudioWorkletNode(context, 'highband-restore', {
+      numberOfInputs: 2,
+      outputChannelCount: [1],
+      channelCount: 1,
+      channelCountMode: 'explicit',
+    });
+    // Input 0 (the model's output) is wired with the rest of the chain below.
+    beforeModel.connect(restore, 0, 1);
+    nodes.push(restore);
+  }
+  if (gated) {
+    nodes.push(
+      new NoiseGateWorkletNode(workletContext, {
+        openThreshold: gateThresholdDb,
+        closeThreshold: gateThresholdDb - GATE_HYSTERESIS_DB,
+        holdMs: GATE_HOLD_MS,
+        maxChannels: 1,
+      }),
+    );
+  }
+  if (leveler) {
+    // Brings the loud moments down and raises the rest: the node makes up for what it takes
+    // away by itself, so no gain is added here. Measured: a voice captured at -25 dBFS (where
+    // browsers leave it, faint next to other apps) goes out at -15, a quiet one at -40 goes
+    // out at -29, and a shout at -3 stays at -7.
+    const compressor = context.createDynamicsCompressor();
+    compressor.threshold.value = -30;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 3;
+    compressor.attack.value = 0.005;
+    compressor.release.value = 0.2;
+    nodes.push(compressor);
+  }
+  const volume = context.createGain();
+  volume.gain.value = gain;
+  nodes.push(volume);
+  // A wall just below full scale: a shout or a boosted microphone never clips.
+  const limiter = context.createDynamicsCompressor();
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.1;
+  nodes.push(limiter);
+  for (const [index, node] of nodes.entries()) {
+    const next = nodes[index + 1];
+    if (next) node.connect(next);
+  }
+  return { nodes, denoiser };
+}
+
+/** Loads the model and the worklets a chain needs into `context`; answers the model's binary. */
+export async function loadChainModules(
+  context: BaseAudioContext,
+  { model, gateThresholdDb }: MicrophoneProcessing,
+): Promise<ArrayBuffer | null> {
+  const gated = model !== null && gateThresholdDb !== null;
+  const [binary] = await Promise.all([
+    model ? loadModel(model) : null,
+    model
+      ? context.audioWorklet.addModule(model === 'gtcrn' ? gtcrnWorkletUrl : rnnoiseWorkletUrl)
+      : null,
+    model === 'gtcrn' ? context.audioWorklet.addModule(highbandRestoreUrl) : null,
+    gated ? context.audioWorklet.addModule(noiseGateWorkletUrl) : null,
+  ]);
+  return binary;
 }

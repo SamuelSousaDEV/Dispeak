@@ -46,6 +46,8 @@ import { ConversationService } from './modules/conversations/service';
 import { streamReportRoutes } from './modules/streams/routes';
 import { StreamReportService } from './modules/streams/service';
 import { voiceRoutes } from './modules/voice/routes';
+import { voiceLabRoutes } from './modules/voice-lab/routes';
+import { VoiceLabService } from './modules/voice-lab/service';
 import { VoiceAccess } from './modules/voice/voice-access';
 import { VoiceStateStore } from './modules/voice/voice-state';
 import { connectRedis } from './redis';
@@ -106,6 +108,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   });
   await meetings.start();
   const streamReports = new StreamReportService({ db: database.db, redis, log: app.log });
+  const voiceLab = new VoiceLabService(database.db);
   const media = new MediaLink({
     url: config.MEDIA_INTERNAL_URL,
     sharedSecret: config.MEDIA_SHARED_SECRET,
@@ -155,8 +158,8 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   );
   const linkPreviews = new LinkPreviews({ allowPrivate: config.LINK_PREVIEW_ALLOW_PRIVATE });
   const gifs = new GifSearch({ apiKey: config.GIPHY_API_KEY, baseUrl: config.GIPHY_API_URL });
-  // Uploads that never made it into a message, files whose message is gone, and old stream
-  // reports.
+  // Uploads that never made it into a message, files whose message is gone, old stream
+  // reports and old voice test recordings.
   const sweepAttachments = () =>
     Promise.all([
       messages.sweepAttachments().catch((error: unknown) => {
@@ -164,6 +167,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       }),
       streamReports.sweep().catch((error: unknown) => {
         app.log.warn({ err: error }, 'stream report sweep failed');
+      }),
+      voiceLab.sweep().catch((error: unknown) => {
+        app.log.warn({ err: error }, 'voice test recording sweep failed');
       }),
     ]);
   const sweepTimer = setInterval(() => void sweepAttachments(), ATTACHMENT_SWEEP_MS);
@@ -204,6 +210,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     media,
     hub,
     streamReports,
+    voiceLab,
     meetings,
   });
   app.decorateRequest('auth');
@@ -276,6 +283,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       await api.register(conversationRoutes);
       await api.register(voiceRoutes);
       await api.register(streamReportRoutes);
+      await api.register(voiceLabRoutes);
       await api.register(meetingRoutes);
       if (config.LAB_ENABLED) await api.register(labRoutes);
     },

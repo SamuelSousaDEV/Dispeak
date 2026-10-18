@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  customType,
   boolean,
   foreignKey,
   index,
@@ -487,4 +488,29 @@ export const streamReports = pgTable(
     index('stream_reports_user_idx').on(table.userId, table.startedAt),
     index('stream_reports_channel_idx').on(table.channelId, table.startedAt),
   ],
+);
+
+/** Raw bytes in Postgres; small files only (the voice test's recordings). */
+const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
+
+/**
+ * Verdicts of the blind voice test (`@frequencia/shared` `VoiceLabResult`): which version of
+ * their own recording each person liked best and least. The untouched recording is kept only
+ * when the person agreed, and only for a few weeks.
+ */
+export const voiceLabResults = pgTable(
+  'voice_lab_results',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    best: text('best').notNull(),
+    worst: text('worst').notNull(),
+    /** The rest of the verdict: order offered, microphone, levels, comment. */
+    details: jsonb('details').notNull(),
+    recording: bytea('recording'),
+    createdAt: createdAt(),
+  },
+  (table) => [index('voice_lab_results_created_idx').on(table.createdAt)],
 );

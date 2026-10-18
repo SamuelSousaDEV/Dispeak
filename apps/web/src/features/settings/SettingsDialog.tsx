@@ -36,6 +36,7 @@ import { DeviceSelect, supportsOutputSelection, useAudioDevices } from './audio-
 import { KeybindRow, OptionGroup, Slider, SoundRow, Toggle } from './controls';
 import { bindingFromEvent, KEYBIND_ACTIONS, KEYBIND_LABELS, type KeybindAction } from './keybinds';
 import { AddedGames, HiddenGames, PlayingNow } from './GamesSettings';
+import { VoiceLab } from '../voice-lab/VoiceLab';
 import { MicTest } from './MicTest';
 import { PasswordForm, ProfileTab } from './ProfileTab';
 import {
@@ -778,6 +779,13 @@ function buildPages({ user, guild, onSignOut, goTo }: PageContext): PageEntry[] 
           scope: 'device',
           keywords: 'supressão ruído eco ganho nivelar reforçar',
           render: () => <VoiceProcessing />,
+        },
+        {
+          id: 'voice-lab',
+          title: 'TESTE ÀS CEGAS DA VOZ',
+          scope: 'device',
+          keywords: 'teste voz qualidade abafada comparar gravar deepfilternet',
+          render: () => <VoiceLab />,
         },
         {
           id: 'output',
