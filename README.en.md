@@ -49,12 +49,15 @@ What sets it apart from a typical Discord clone is what sits under the interface
   </tr>
 </table>
 
-- **Voice channels** with mute, deafen (which really stops sending audio), speaking indicator, automatic reconnection, push to talk and per-person volume, kept in the account.
-- **Neural noise suppression** in the browser (GTCRN in WebAssembly), with a filter of our own that restores the treble the model cuts. Opus voice at 128 kbps.
+- **Voice channels** with mute, deafen (which really stops the call's audio, without silencing a stream being watched), speaking indicator, automatic reconnection, push to talk and per-person volume, kept in the account.
+- **Neural noise suppression** in the browser (GTCRN in WebAssembly), with a filter of our own that restores the treble the model cuts. Opus voice at 128 kbps. Every stage was measured against real recordings and against the same voice going through Discord.
+- **Hear yourself as others do**: records a few seconds of your own voice with the same filters and the same Opus as a call, with nobody needed on the other side.
 - **Screen sharing** in H.264 on the GPU, with three presets (720p30, 1080p60 and 1440p30 for films), sound at 256 kbps, several at once, full screen and picture-in-picture.
 - **Watch on demand**: video only goes to those who clicked watch, and stops being sent when it leaves the screen.
 - **Real statistics** on every stream (resolution, frames per second, bitrate, loss, codec) and in the bottom bar (RTT, upload, download).
 - **Measured streams**: the streamer, the server and every viewer send samples every 5 seconds, and the page points to where along the path frames get lost.
+- **Measured voices**: every voice in every call is measured at the speaker, the server and each listener. When someone sounds choppy, the page says whether the speaker's internet failed (everyone heard it) or a single listener's did.
+- **Event sounds** per server, including when someone opens or closes your stream.
 - **Camera** with simulcast.
 
 ### Meetings by link
@@ -133,9 +136,11 @@ What sets it apart from a typical Discord clone is what sits under the interface
 - An Electron window onto the published site: whatever the site gains, the app gains without reinstalling.
 - **60 fps streaming a full-screen game**, with a capture engine of its own in Rust (see [below](#streaming-a-game-at-60-fps)).
 - **Global shortcuts** for mute, deafen, stream, camera and hang up that work with the game in focus. With a game in front, the stream shortcut streams that game without opening the picker.
-- A stream's sound carries only the game, without the call or other programs.
+- A stream's sound carries only the game, without the call or other programs. When the game cannot be told apart, it carries the PC's sound without voice chat programs (Discord included); the panel warns when a stream would carry those voices.
 - Detects the running game (Steam, Epic, Xbox, GOG and full-screen programs) with no external list and no internet.
 - Microphone, sound and hang-up buttons on the taskbar thumbnail; a tray icon showing the call state.
+- Starts with Windows, hidden in the tray (it can be turned off), and the X hides instead of closing: friends see who is around.
+- **Corner notifications**, Steam-style, when a friend comes online, joins a call or starts streaming. One click takes you there.
 - Automatic updates from the project's own server.
 
 ### On a phone
@@ -279,7 +284,7 @@ pnpm release:desktop        # Builds the app installer and uploads it to the ser
 ```
 apps/
 ├── web/        # React: features/{voice,streams,meetings,chat,friends,guilds,gateway,desktop}, e2e/
-├── api/        # Fastify: modules/{auth,guilds,messages,voice,meetings,streams,friends}, gateway/, db/
+├── api/        # Fastify: modules/{auth,guilds,messages,voice,meetings,streams,voice-reports,friends}, gateway/, db/
 ├── media/      # mediasoup: rooms/{room,peer,room-manager}, signaling/
 └── desktop/    # Electron: window, screen picker, shortcuts, updates
     └── native/ # capture/ and host/ in Rust
@@ -294,9 +299,9 @@ scripts/        # Dev, local production, native build and release orchestration
 ## Tests
 
 ```
-pnpm test    465 tests   permissions, RPC protocol, API with real Postgres and Redis,
+pnpm test    482 tests   permissions, RPC protocol, API with real Postgres and Redis,
                          SFU with real mediasoup workers, client state
-pnpm e2e      18 tests   Chromium with synthetic camera, microphone and screen;
+pnpm e2e      19 tests   Chromium with synthetic camera, microphone and screen;
                          the desktop app with the real capture engine
 ```
 

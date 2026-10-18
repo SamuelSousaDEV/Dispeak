@@ -49,12 +49,15 @@ A diferença para um clone de Discord comum está no que fica embaixo da interfa
   </tr>
 </table>
 
-- **Canais de voz** com mutar, ensurdecer (que de fato para o envio de áudio), indicador de quem está falando, reconexão automática, apertar para falar e volume individual por pessoa, guardado na conta.
-- **Supressão de ruído** por rede neural no navegador (GTCRN em WebAssembly), com um filtro próprio que devolve os agudos que o modelo corta. Voz em Opus a 128 kbps.
+- **Canais de voz** com mutar, ensurdecer (que de fato para o envio de áudio da chamada, sem calar a transmissão que se assiste), indicador de quem está falando, reconexão automática, apertar para falar e volume individual por pessoa, guardado na conta.
+- **Supressão de ruído** por rede neural no navegador (GTCRN em WebAssembly), com um filtro próprio que devolve os agudos que o modelo corta. Voz em Opus a 128 kbps. Cada etapa foi medida contra gravações reais e contra a mesma voz passando pelo Discord.
+- **Ouvir como os outros me ouvem**: grava alguns segundos da própria voz com os mesmos filtros e o mesmo Opus de uma chamada, sem precisar de ninguém do outro lado.
 - **Transmissão de tela** em H.264 pela placa de vídeo, em três presets (720p30, 1080p60 e 1440p30 para filmes), com som a 256 kbps, várias ao mesmo tempo, tela cheia e janela flutuante.
 - **Assistir sob demanda**: o vídeo só vai para quem clicou em assistir, e para de ser enviado quando sai da tela.
 - **Estatísticas reais** em cada transmissão (resolução, quadros por segundo, bitrate, perda, codec) e na barra inferior (RTT, envio, recebimento).
 - **Transmissões medidas**: quem transmite, o servidor e cada espectador mandam amostras a cada 5 segundos, e a página aponta em que ponto do caminho os quadros se perdem.
+- **Vozes medidas**: cada voz de cada chamada é medida em quem fala, no servidor e em quem ouve. Quando alguém soa picotado, a página diz se a falha foi na internet de quem fala (todos ouviram) ou na de um ouvinte só.
+- **Sons de eventos** por servidor, inclusive quando alguém abre ou fecha a sua transmissão.
 - **Câmera** em simulcast.
 
 ### Reuniões por link
@@ -133,9 +136,11 @@ A diferença para um clone de Discord comum está no que fica embaixo da interfa
 - Uma janela Electron sobre o site publicado: o que o site ganha, o app ganha sem reinstalar.
 - **60 fps transmitindo um jogo em tela cheia**, com um motor de captura próprio em Rust (ver [abaixo](#transmitir-um-jogo-a-60-fps)).
 - **Atalhos globais** para mutar, ensurdecer, transmitir, câmera e desligar, que funcionam com o jogo em foco. O de transmitir, com um jogo na frente, transmite esse jogo sem abrir o seletor.
-- O som da transmissão leva só o jogo, sem o som da chamada nem de outros programas.
+- O som da transmissão leva só o jogo, sem o som da chamada nem de outros programas. Quando o jogo não dá para separar, vai o som do PC sem os programas de chamada de voz (Discord incluído); o painel avisa quando a transmissão levaria essas vozes.
 - Detecta o jogo aberto (Steam, Epic, Xbox, GOG e programas em tela cheia) sem lista externa e sem internet.
 - Botões de microfone, fone e desligar na miniatura da barra de tarefas; ícone na bandeja com o estado da chamada.
+- Abre com o Windows, escondido na bandeja (dá para desligar), e o X esconde em vez de fechar: os amigos veem quem está disponível.
+- **Avisos no canto da tela**, no estilo da Steam, quando um amigo fica online, entra numa chamada ou começa a transmitir. Um clique leva até lá.
 - Atualização automática a partir do próprio servidor.
 
 ### No celular
@@ -279,7 +284,7 @@ pnpm release:desktop        # Gera o instalador do app e envia ao servidor
 ```
 apps/
 ├── web/        # React: features/{voice,streams,meetings,chat,friends,guilds,gateway,desktop}, e2e/
-├── api/        # Fastify: modules/{auth,guilds,messages,voice,meetings,streams,friends}, gateway/, db/
+├── api/        # Fastify: modules/{auth,guilds,messages,voice,meetings,streams,voice-reports,friends}, gateway/, db/
 ├── media/      # mediasoup: rooms/{room,peer,room-manager}, signaling/
 └── desktop/    # Electron: janela, seletor de tela, atalhos, atualização
     └── native/ # capture/ e host/ em Rust
@@ -294,9 +299,9 @@ scripts/        # Orquestração de dev, produção local, build nativo e lança
 ## Testes
 
 ```
-pnpm test    465 testes   permissões, protocolo RPC, API com Postgres e Redis reais,
+pnpm test    482 testes   permissões, protocolo RPC, API com Postgres e Redis reais,
                           SFU com workers mediasoup reais, estado do cliente
-pnpm e2e      18 testes   Chromium com câmera, microfone e tela sintéticos;
+pnpm e2e      19 testes   Chromium com câmera, microfone e tela sintéticos;
                           o app de desktop com o motor de captura de verdade
 ```
 
