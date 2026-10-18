@@ -33,6 +33,8 @@ export interface FakeMedia {
   ) => void;
   /** Pushes a stream report to every connected API instance. */
   report: (event: EventInput<typeof apiInternalSide, 'stream-report'>) => void;
+  /** Pushes a voice report to every connected API instance. */
+  reportVoice: (event: EventInput<typeof apiInternalSide, 'voice-report'>) => void;
   /** Drops every API connection, as a media restart would. */
   dropLinks: () => void;
   close: () => Promise<void>;
@@ -72,6 +74,9 @@ export async function startFakeMedia(): Promise<FakeMedia> {
     },
     report: (event) => {
       for (const link of links) link.notify('stream-report', event);
+    },
+    reportVoice: (event) => {
+      for (const link of links) link.notify('voice-report', event);
     },
     dropLinks: () => {
       for (const client of wss.clients) client.terminate();

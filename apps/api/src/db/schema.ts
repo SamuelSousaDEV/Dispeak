@@ -488,3 +488,29 @@ export const streamReports = pgTable(
     index('stream_reports_channel_idx').on(table.channelId, table.startedAt),
   ],
 );
+
+/**
+ * Telemetry of one microphone in a call, as the media service measured it with the speaker and
+ * the listeners (`VoiceSample` of `@frequencia/shared`). Kept for a few weeks, to tell why a
+ * voice sounded choppy.
+ */
+export const voiceReports = pgTable(
+  'voice_reports',
+  {
+    /** The microphone producer of the media service. */
+    id: uuid('id').primaryKey(),
+    channelId: uuid('channel_id')
+      .notNull()
+      .references(() => channels.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    samples: jsonb('samples').notNull().default([]),
+  },
+  (table) => [
+    index('voice_reports_user_idx').on(table.userId, table.startedAt),
+    index('voice_reports_channel_idx').on(table.channelId, table.startedAt),
+  ],
+);

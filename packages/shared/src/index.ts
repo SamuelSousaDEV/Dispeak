@@ -9,6 +9,7 @@ export * from './gateway';
 export * from './internal';
 export * from './desktop';
 export * from './stream-telemetry';
+export * from './voice-telemetry';
 export * from './user-settings';
 export * from './native-host';
 export * from './meetings';

@@ -52,6 +52,7 @@ export class RoomManager {
       onProducerAdded: (...args) => this.hooks.onProducerAdded?.(...args),
       onProducerRemoved: (...args) => this.hooks.onProducerRemoved?.(...args),
       onStreamReport: (...args) => this.hooks.onStreamReport?.(...args),
+      onVoiceReport: (...args) => this.hooks.onVoiceReport?.(...args),
       onClosed: (room) => {
         if (this.rooms.get(room.id) === room) this.rooms.delete(room.id);
         this.hooks.onClosed?.(room);

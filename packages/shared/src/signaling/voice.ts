@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineSide } from '../rpc/peer';
 import { streamSenderSampleSchema, streamViewerSampleSchema } from '../stream-telemetry';
+import { voiceListenerSampleSchema, voiceSpeakerSampleSchema } from '../voice-telemetry';
 import { empty, iceServerSchema, nicknameSchema } from './common';
 
 /**
@@ -257,6 +258,22 @@ export const voiceServerSide = defineSide({
         role: z.literal('viewer'),
         producerId: z.string().max(64),
         sample: streamViewerSampleSchema,
+      }),
+    ]),
+    /**
+     * What the browser measures of a voice, every couple of seconds: its own microphone
+     * (`speaker`), or a voice it hears (`listener`). Only kept as telemetry.
+     */
+    'voice-stats': z.discriminatedUnion('role', [
+      z.object({
+        role: z.literal('speaker'),
+        producerId: z.string().max(64),
+        sample: voiceSpeakerSampleSchema,
+      }),
+      z.object({
+        role: z.literal('listener'),
+        producerId: z.string().max(64),
+        sample: voiceListenerSampleSchema,
       }),
     ]),
   },

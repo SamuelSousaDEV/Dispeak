@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { collectConnectionStats, collectInboundStreamStats } from './voice-stats';
+import {
+  collectConnectionStats,
+  collectInboundStreamStats,
+  collectInboundVoiceStats,
+} from './voice-stats';
 
 function report(entries: Array<Record<string, unknown> & { id: string; type: string }>) {
   return new Map(entries.map((entry) => [entry.id, entry])) as unknown as RTCStatsReport;
@@ -114,5 +118,54 @@ describe('collectInboundStreamStats', () => {
       kbps: 8000,
       decoder: 'D3D11VideoDecoder',
     });
+  });
+});
+
+describe('collectInboundVoiceStats', () => {
+  const heard = (counters: Record<string, number>) =>
+    report([{ id: 'in-audio', type: 'inbound-rtp', kind: 'audio', jitter: 0.004, ...counters }]);
+  const start = {
+    packetsReceived: 1000,
+    packetsLost: 10,
+    totalSamplesReceived: 960_000,
+    concealedSamples: 20_000,
+    silentConcealedSamples: 15_000,
+    jitterBufferDelay: 400,
+    jitterBufferEmittedCount: 960_000,
+  };
+
+  it('counts what was made up to cover lost packets, leaving out the silence it filled', () => {
+    const first = collectInboundVoiceStats(heard(start), null, 40);
+    expect(first.listener).toBeNull();
+    const { listener } = collectInboundVoiceStats(
+      heard({
+        packetsReceived: 1095,
+        packetsLost: 15,
+        totalSamplesReceived: 960_000 + 96_000,
+        concealedSamples: 20_000 + 6_000,
+        silentConcealedSamples: 15_000 + 1_200,
+        jitterBufferDelay: 400 + 5_760,
+        jitterBufferEmittedCount: 960_000 + 96_000,
+      }),
+      first.counters,
+      40,
+    );
+    expect(listener).toEqual({
+      lossPercent: 5,
+      concealedPercent: 5,
+      jitterMs: 4,
+      jitterBufferMs: 60,
+      rttMs: 40,
+    });
+  });
+
+  it('says nothing while no packet arrives, as when the speaker is muted', () => {
+    const first = collectInboundVoiceStats(heard(start), null, null);
+    const quiet = collectInboundVoiceStats(
+      heard({ ...start, totalSamplesReceived: start.totalSamplesReceived + 96_000 }),
+      first.counters,
+      null,
+    );
+    expect(quiet.listener).toBeNull();
   });
 });

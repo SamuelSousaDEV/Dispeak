@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineSide } from './rpc/peer';
 import { empty } from './signaling/common';
 import { streamPathSchema, streamSampleSchema } from './stream-telemetry';
+import { voiceSampleSchema } from './voice-telemetry';
 
 /**
  * Internal RPC between the API and the media service, over a WebSocket the API opens to
@@ -100,6 +101,17 @@ export const apiInternalSide = defineSide({
       startedAt: z.iso.datetime(),
       endedAt: z.iso.datetime().nullable(),
       samples: z.array(streamSampleSchema),
+    }),
+    /** New samples of a voice in a call, like `stream-report`; one report per microphone. */
+    'voice-report': z.object({
+      eventId: z.string(),
+      /** The microphone producer; identifies the voice. */
+      producerId: z.string(),
+      roomId: z.string(),
+      userId: z.string(),
+      startedAt: z.iso.datetime(),
+      endedAt: z.iso.datetime().nullable(),
+      samples: z.array(voiceSampleSchema),
     }),
   },
 });

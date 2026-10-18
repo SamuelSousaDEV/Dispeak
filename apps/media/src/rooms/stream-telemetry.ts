@@ -34,7 +34,7 @@ interface Layer {
 }
 
 /** Reports of one machine during the current window, merged. */
-interface Gathered<T> {
+export interface Gathered<T> {
   sums: Record<string, number>;
   counts: Record<string, number>;
   last: T;
@@ -43,7 +43,7 @@ interface Gathered<T> {
 /** Fields of the viewer sample that count events since the previous report. */
 const VIEWER_COUNTERS = new Set(['framesDropped', 'freezes', 'freezeMs']);
 
-function gather<T extends Record<string, unknown>>(
+export function gather<T extends Record<string, unknown>>(
   into: Gathered<T> | undefined,
   sample: T,
 ): Gathered<T> {
@@ -65,7 +65,7 @@ function gather<T extends Record<string, unknown>>(
 const LATEST = new Set(['width', 'height', 'watching']);
 
 /** Counters added up, sizes and labels as last reported, other numbers averaged. */
-function merged<T extends Record<string, unknown>>(gathered: Gathered<T>): T {
+export function merged<T extends Record<string, unknown>>(gathered: Gathered<T>): T {
   const result: Record<string, unknown> = { ...gathered.last };
   for (const [key, sum] of Object.entries(gathered.sums)) {
     if (LATEST.has(key)) continue;

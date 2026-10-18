@@ -18,6 +18,7 @@ import type { Peer } from '../rooms/peer';
 import type { Room } from '../rooms/room';
 import type { RoomManager } from '../rooms/room-manager';
 import type { StreamReportChunk } from '../rooms/stream-telemetry';
+import type { VoiceReportChunk } from '../rooms/voice-telemetry';
 
 export const INTERNAL_PATH = `${MEDIA_PREFIX}${INTERNAL_RPC_PATH}`;
 
@@ -71,6 +72,17 @@ export class InternalServer {
           endedAt: chunk.endedAt?.toISOString() ?? null,
         };
         for (const link of this.links) link.notify('stream-report', event);
+      },
+      onVoiceReport: (room: Room, peer: Peer, chunk: VoiceReportChunk) => {
+        const event = {
+          eventId: `${this.nodeId}:${++this.eventCounter}`,
+          roomId: room.id,
+          userId: peer.userId,
+          ...chunk,
+          startedAt: chunk.startedAt.toISOString(),
+          endedAt: chunk.endedAt?.toISOString() ?? null,
+        };
+        for (const link of this.links) link.notify('voice-report', event);
       },
     });
   }

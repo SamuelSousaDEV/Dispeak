@@ -45,6 +45,8 @@ import { conversationRoutes } from './modules/conversations/routes';
 import { ConversationService } from './modules/conversations/service';
 import { streamReportRoutes } from './modules/streams/routes';
 import { StreamReportService } from './modules/streams/service';
+import { voiceReportRoutes } from './modules/voice-reports/routes';
+import { VoiceReportService } from './modules/voice-reports/service';
 import { voiceRoutes } from './modules/voice/routes';
 import { VoiceAccess } from './modules/voice/voice-access';
 import { VoiceStateStore } from './modules/voice/voice-state';
@@ -106,6 +108,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   });
   await meetings.start();
   const streamReports = new StreamReportService({ db: database.db, redis, log: app.log });
+  const voiceReports = new VoiceReportService({ db: database.db, redis, log: app.log });
   const media = new MediaLink({
     url: config.MEDIA_INTERNAL_URL,
     sharedSecret: config.MEDIA_SHARED_SECRET,
@@ -122,6 +125,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
         ? meetings.applyVoiceState(event)
         : voice.applyVoiceState(event),
     onStreamReport: (event) => streamReports.record(event),
+    onVoiceReport: (event) => voiceReports.record(event),
   });
   voice.attach(media);
   meetings.attach(media);
@@ -156,7 +160,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   const linkPreviews = new LinkPreviews({ allowPrivate: config.LINK_PREVIEW_ALLOW_PRIVATE });
   const gifs = new GifSearch({ apiKey: config.GIPHY_API_KEY, baseUrl: config.GIPHY_API_URL });
   // Uploads that never made it into a message, files whose message is gone, and old stream
-  // reports.
+  // and voice reports.
   const sweepAttachments = () =>
     Promise.all([
       messages.sweepAttachments().catch((error: unknown) => {
@@ -164,6 +168,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       }),
       streamReports.sweep().catch((error: unknown) => {
         app.log.warn({ err: error }, 'stream report sweep failed');
+      }),
+      voiceReports.sweep().catch((error: unknown) => {
+        app.log.warn({ err: error }, 'voice report sweep failed');
       }),
     ]);
   const sweepTimer = setInterval(() => void sweepAttachments(), ATTACHMENT_SWEEP_MS);
@@ -204,6 +211,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     media,
     hub,
     streamReports,
+    voiceReports,
     meetings,
   });
   app.decorateRequest('auth');
@@ -276,6 +284,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       await api.register(conversationRoutes);
       await api.register(voiceRoutes);
       await api.register(streamReportRoutes);
+      await api.register(voiceReportRoutes);
       await api.register(meetingRoutes);
       if (config.LAB_ENABLED) await api.register(labRoutes);
     },

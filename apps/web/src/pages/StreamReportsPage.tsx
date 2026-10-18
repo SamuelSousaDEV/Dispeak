@@ -1,8 +1,9 @@
 import type { StreamReport, StreamReportSummary } from '@frequencia/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Loading } from '../components/Loading';
+import { Section, Stage } from '../components/ReportParts';
 import { cx } from '../lib/cx';
 import { describeError } from '../lib/http';
 import { clock, FpsChart } from '../features/streams/FpsChart';
@@ -30,44 +31,6 @@ const AUDIO_SOURCES: Record<string, string> = {
 function duration(report: StreamReportSummary): string | null {
   if (!report.endedAt) return null;
   return clock((Date.parse(report.endedAt) - Date.parse(report.startedAt)) / 1000);
-}
-
-function Section({
-  number,
-  title,
-  children,
-}: {
-  number: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-b border-line">
-      <h2 className="label border-b border-line bg-surface-2 px-4 py-2 text-fg">
-        <span className="text-muted">{number}.</span> {title}
-      </h2>
-      <div className="p-4">{children}</div>
-    </section>
-  );
-}
-
-/** One stage of the frame's way, as a column of label/value rows. */
-function Stage({ title, rows }: { title: string; rows: Array<[string, string | number | null]> }) {
-  return (
-    <div className="min-w-0 bg-surface p-3">
-      <h3 className="label mb-2 truncate text-fg">{title}</h3>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-        {rows.map(([label, value]) => (
-          <div key={label} className="contents">
-            <dt className="label text-muted">{label}</dt>
-            <dd className="m-0 truncate text-right font-mono text-[12px] tabular-nums text-fg">
-              {value ?? '—'}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
 }
 
 const fps = (value: number | null) => (value === null ? null : `${value}`);
@@ -308,11 +271,16 @@ export function StreamReportsPage() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
+      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <h1 className="label-lg text-fg">TRANSMISSÕES MEDIDAS</h1>
-        <Link to="/app" className="label text-muted transition-colors hover:text-accent">
-          ← VOLTAR
-        </Link>
+        <nav className="flex items-center gap-4">
+          <Link to="/vozes" className="label text-muted transition-colors hover:text-accent">
+            VOZES
+          </Link>
+          <Link to="/app" className="label text-muted transition-colors hover:text-accent">
+            ← VOLTAR
+          </Link>
+        </nav>
       </header>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <nav

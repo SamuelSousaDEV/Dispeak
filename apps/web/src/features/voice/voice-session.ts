@@ -34,9 +34,11 @@ import { pickScreenCodec } from './video-codec';
 import {
   collectConnectionStats,
   collectInboundStreamStats,
+  collectInboundVoiceStats,
   collectOutboundStreamStats,
   type StatsSample,
   type StreamSample,
+  type VoiceCounters,
 } from './voice-stats';
 import {
   cameraOff,
@@ -209,6 +211,8 @@ export class VoiceSession {
   private statsTimer: number | null = null;
   private statsSample: StatsSample | null = null;
   private readonly streamSamples = new Map<string, StreamSample>();
+  /** Counters of each voice being heard, by consumer id, for the voice telemetry. */
+  private readonly voiceCounters = new Map<string, VoiceCounters>();
   private reconnectTimer: number | null = null;
   private attempt = 0;
   private generation = 0;
@@ -789,6 +793,7 @@ export class VoiceSession {
     this.stopGpuUsage = null;
     set({ gpu: null });
     this.streamSamples.clear();
+    this.voiceCounters.clear();
     for (const timer of this.iceTimers.values()) window.clearTimeout(timer);
     this.iceTimers.clear();
 
@@ -1708,9 +1713,51 @@ export class VoiceSession {
           });
         }
       }
+      await this.reportVoices(stats.rttMs);
       set({ stats, streamStats });
     } catch {
       // Transports can close between the check and the call.
+    }
+  }
+
+  /**
+   * Telemetry of the voices: how the microphone is cleaned while it is open, and what arrives
+   * of each voice heard. The media service keeps it; nothing here is shown.
+   */
+  private async reportVoices(rttMs: number | null): Promise<void> {
+    const rpc = this.connection?.rpc;
+    const producer = this.micProducer;
+    if (producer && !producer.closed && !producer.paused) {
+      const settings = useSettingsStore.getState();
+      rpc?.notify('voice-stats', {
+        role: 'speaker',
+        producerId: producer.id,
+        sample: {
+          noiseSuppression: get().noiseSuppression,
+          echoCancellation: settings.echoCancellation,
+          autoGainControl: settings.autoGainControl,
+          rttMs,
+        },
+      });
+    }
+    for (const id of this.voiceCounters.keys()) {
+      if (!this.consumers.has(id)) this.voiceCounters.delete(id);
+    }
+    for (const { consumer, source } of this.consumers.values()) {
+      if (source !== 'mic' || consumer.closed) continue;
+      const result = collectInboundVoiceStats(
+        await consumer.getStats(),
+        this.voiceCounters.get(consumer.id) ?? null,
+        rttMs,
+      );
+      this.voiceCounters.set(consumer.id, result.counters);
+      if (result.listener) {
+        rpc?.notify('voice-stats', {
+          role: 'listener',
+          producerId: consumer.producerId,
+          sample: result.listener,
+        });
+      }
     }
   }
 }

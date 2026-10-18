@@ -201,6 +201,10 @@ export class VoiceServer {
       this.rooms.get(claims.room)?.reportStreamStats(peer, event);
     });
 
+    rpc.on('voice-stats', (event) => {
+      this.rooms.get(claims.room)?.reportVoiceStats(peer, event);
+    });
+
     rpc.handle('leave', () => {
       // Answer first, then close: the response must reach the client before the socket ends.
       setImmediate(() => leave(1000, 'left'));

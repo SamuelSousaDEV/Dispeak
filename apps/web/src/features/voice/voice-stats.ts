@@ -1,4 +1,4 @@
-import type { StreamViewerSample } from '@frequencia/shared';
+import type { StreamViewerSample, VoiceListenerSample } from '@frequencia/shared';
 import type { StreamLayerStats, StreamStats, VoiceConnectionStats } from './voice-store';
 
 export interface StatsSample {
@@ -258,6 +258,63 @@ export function collectOutboundStreamStats(
       encoder: typeof implementation === 'string' ? implementation : null,
       captureFps:
         typeof source?.framesPerSecond === 'number' ? Math.round(source.framesPerSecond) : null,
+    },
+  };
+}
+
+/** Counters of one voice being heard, remembered between two polls. */
+export interface VoiceCounters {
+  packetsReceived: number;
+  packetsLost: number;
+  /** Samples played, those made up to cover missing packets, and those of them silent. */
+  played: number;
+  concealed: number;
+  silentConcealed: number;
+  jitterBufferSeconds: number;
+  jitterBufferEmitted: number;
+}
+
+/**
+ * What a listener measures of one voice, from its audio consumer, since the previous poll.
+ * `listener` is `null` on the first poll and while no packet arrives (the speaker is muted):
+ * a silence is not a voice going wrong.
+ */
+export function collectInboundVoiceStats(
+  report: RTCStatsReport,
+  previous: VoiceCounters | null,
+  rttMs: number | null,
+): { counters: VoiceCounters; listener: VoiceListenerSample | null } {
+  const inbound = entries(report).find(
+    (entry) => entry.type === 'inbound-rtp' && entry.kind === 'audio',
+  );
+  const counters: VoiceCounters = {
+    packetsReceived: number(inbound?.packetsReceived),
+    packetsLost: number(inbound?.packetsLost),
+    played: number(inbound?.totalSamplesReceived),
+    concealed: number(inbound?.concealedSamples),
+    silentConcealed: number(inbound?.silentConcealedSamples),
+    jitterBufferSeconds: number(inbound?.jitterBufferDelay),
+    jitterBufferEmitted: number(inbound?.jitterBufferEmittedCount),
+  };
+  // A counter that went back means a new consumer: start over.
+  const since = (key: keyof VoiceCounters) =>
+    previous ? Math.max(0, counters[key] - previous[key]) : 0;
+  const arrived = since('packetsReceived');
+  if (!previous || arrived === 0) return { counters, listener: null };
+  const lost = since('packetsLost');
+  const played = since('played');
+  const audible = Math.max(0, since('concealed') - since('silentConcealed'));
+  const tenth = (value: number) => Math.round(value * 10) / 10;
+  const emitted = since('jitterBufferEmitted');
+  const jitter = optional(inbound?.jitter);
+  return {
+    counters,
+    listener: {
+      lossPercent: tenth((lost / (lost + arrived)) * 100),
+      concealedPercent: played > 0 ? Math.min(100, tenth((audible / played) * 100)) : null,
+      jitterMs: jitter === null ? null : tenth(jitter * 1000),
+      jitterBufferMs: emitted > 0 ? tenth((since('jitterBufferSeconds') / emitted) * 1000) : null,
+      rttMs,
     },
   };
 }

@@ -371,6 +371,13 @@ function StreamReports() {
       >
         [ VER TRANSMISSÕES MEDIDAS ]
       </Link>
+      <p className="text-sm text-muted">
+        A voz de cada pessoa nas chamadas também é medida: quanto se perdeu na internet de quem fala
+        e na de cada um que ouve, para saber de quem é a falha quando alguém soa picotado.
+      </p>
+      <Link to="/vozes" className="label self-start text-fg transition-colors hover:text-accent">
+        [ VER VOZES MEDIDAS ]
+      </Link>
     </>
   );
 }
@@ -838,7 +845,7 @@ function buildPages({ user, guild, onSignOut, goTo }: PageContext): PageEntry[] 
         {
           id: 'reports',
           title: 'MEDIÇÕES',
-          keywords: 'telemetria quadros gpu desempenho',
+          keywords: 'telemetria quadros gpu desempenho voz picotada robótica perda internet',
           render: () => <StreamReports />,
         },
       ],

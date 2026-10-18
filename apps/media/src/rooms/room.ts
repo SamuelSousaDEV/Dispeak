@@ -30,9 +30,11 @@ import type {
   TransportAppData,
 } from './peer';
 import { StreamTelemetry, type StreamReportChunk } from './stream-telemetry';
+import { VoiceTelemetry, type VoiceReportChunk } from './voice-telemetry';
 
 type ClientEvent = keyof (typeof voiceClientSide)['events'];
 type StreamStatsEvent = EventData<typeof voiceServerSide, 'stream-stats'>;
+type VoiceStatsEvent = EventData<typeof voiceServerSide, 'voice-stats'>;
 
 export interface RoomHooks {
   onPeerJoined?: (room: Room, peer: Peer) => void;
@@ -43,6 +45,8 @@ export interface RoomHooks {
   onClosed?: (room: Room) => void;
   /** New telemetry of a screen share; see `StreamTelemetry`. */
   onStreamReport?: (room: Room, peer: Peer, chunk: StreamReportChunk) => void;
+  /** New telemetry of a voice; see `VoiceTelemetry`. */
+  onVoiceReport?: (room: Room, peer: Peer, chunk: VoiceReportChunk) => void;
 }
 
 export interface RoomStats {
@@ -98,6 +102,8 @@ export class Room {
   private readonly viewers = new Map<string, string>();
   /** Telemetry of each screen share, by producer id. */
   private readonly streams = new Map<string, StreamTelemetry>();
+  /** Telemetry of each microphone, by producer id. */
+  private readonly voices = new Map<string, VoiceTelemetry>();
   private closed = false;
 
   private constructor(
@@ -478,6 +484,23 @@ export class Room {
     if (watching) telemetry.addViewer(peer.userId, event.sample);
   }
 
+  /**
+   * Keeps what a browser measured of a voice: its owner about the microphone, anyone hearing
+   * it about what arrives. Anything else is ignored, as are late reports.
+   */
+  reportVoiceStats(peer: Peer, event: VoiceStatsEvent): void {
+    const telemetry = this.voices.get(event.producerId);
+    if (!telemetry || !this.peers.has(peer.id)) return;
+    if (event.role === 'speaker') {
+      if (peer.producers.has(event.producerId)) telemetry.addSpeaker(event.sample);
+      return;
+    }
+    const hearing = [...peer.consumers.values()].some(
+      (consumer) => consumer.producerId === event.producerId,
+    );
+    if (hearing) telemetry.addListener(peer.userId, event.sample);
+  }
+
   closeProducer(peer: Peer, producerId: string): void {
     const producer = peer.producers.get(producerId);
     if (!producer) throw new RpcError(VoiceErrorCode.NotFound, 'unknown producer');
@@ -706,6 +729,16 @@ export class Room {
       this.streams.set(producer.id, telemetry);
       producer.observer.on('close', () => {
         this.streams.delete(producer.id);
+        telemetry.close();
+      });
+    }
+    if (producer.appData.source === 'mic') {
+      const telemetry = new VoiceTelemetry(producer, (chunk) =>
+        this.hooks.onVoiceReport?.(this, peer, chunk),
+      );
+      this.voices.set(producer.id, telemetry);
+      producer.observer.on('close', () => {
+        this.voices.delete(producer.id);
         telemetry.close();
       });
     }
