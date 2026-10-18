@@ -17,7 +17,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 const NAMES: Record<VoiceLabVariant, string> = {
   current: 'A DE HOJE NO DISPEAKER',
   deepfilter: 'DEEPFILTERNET 3',
-  deepfilterLeveled: 'DEEPFILTERNET 3 + NIVELADOR',
+  proposed: 'PROPOSTA: DEEPFILTERNET 3 + NIVELADOR LENTO, SEM O GANHO DO NAVEGADOR',
   rnnoise: 'RNNOISE',
   raw: 'MICROFONE SEM TRATAMENTO',
 };

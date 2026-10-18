@@ -9,8 +9,12 @@ export const VOICE_LAB_VARIANTS = [
   'current',
   /** DeepFilterNet 3 (full band) and a limiter, nothing else. */
   'deepfilter',
-  /** DeepFilterNet 3 with a gentle leveler. */
-  'deepfilterLeveled',
+  /**
+   * The chain proposed after measuring a real microphone: no browser gain, DeepFilterNet 3, a
+   * slow leveler and a limiter. (Until 2026-10-18 this place held DeepFilterNet 3 with the old
+   * leveler, `deepfilterLeveled`, which older verdicts still name.)
+   */
+  'proposed',
   /** RNNoise (full band) and a limiter. */
   'rnnoise',
   /** The microphone as captured, without any cleaning. */

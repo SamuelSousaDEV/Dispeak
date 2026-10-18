@@ -6,6 +6,7 @@ import {
   loadChainModules,
   type MicrophoneProcessing,
 } from '../voice/noise-suppression';
+import levelerUrl from '../voice/voice-leveler.worklet.js?url';
 import { LAB_SAMPLE_RATE, type LabRecording } from './record';
 
 /** The same as a call: `microphone.ts`. */
@@ -66,7 +67,7 @@ function matchLoudness(samples: Float32Array): Float32Array {
 async function throughChain(
   input: Float32Array,
   processing: MicrophoneProcessing,
-  warmupMs = 600,
+  { slowLeveler = false, warmupMs = 600 }: { slowLeveler?: boolean; warmupMs?: number } = {},
 ): Promise<Float32Array> {
   const length = input.length + Math.round(TAIL_SECONDS * LAB_SAMPLE_RATE);
   const context = new OfflineAudioContext(1, length, LAB_SAMPLE_RATE);
@@ -75,7 +76,14 @@ async function throughChain(
   buffer.copyToChannel(new Float32Array(input), 0);
   const source = context.createBufferSource();
   source.buffer = buffer;
-  const { nodes, denoiser } = buildChain(context, source, processing, binary);
+  let input0: AudioNode = source;
+  if (slowLeveler) {
+    await context.audioWorklet.addModule(levelerUrl);
+    const leveler = new AudioWorkletNode(context, 'voice-leveler');
+    source.connect(leveler);
+    input0 = leveler;
+  }
+  const { nodes, denoiser } = buildChain(context, input0, processing, binary);
   nodes.at(-1)?.connect(context.destination);
   source.start(0);
   void context.suspend(0).then(async () => {
@@ -91,7 +99,9 @@ async function throughChain(
     rms(output, 0, output.length) < 1e-5 &&
     rms(input, 0, input.length) > 1e-4
   ) {
-    if (warmupMs < 3000) return throughChain(input, processing, warmupMs * 3);
+    if (warmupMs < 3000) {
+      return throughChain(input, processing, { slowLeveler, warmupMs: warmupMs * 3 });
+    }
     throw new Error(`the ${processing.model} model did not start`);
   }
   return output;
@@ -145,8 +155,12 @@ export async function renderVariant(
     case 'deepfilter':
       samples = await throughChain(await throughDeepFilter(recording.raw), plain(false));
       break;
-    case 'deepfilterLeveled':
-      samples = await throughChain(await throughDeepFilter(recording.raw), plain(true));
+    case 'proposed':
+      // Captured without the browser's gain (`raw`: nothing plays here for the echo
+      // cancellation to remove, and alone it leaves the voice as it is).
+      samples = await throughChain(await throughDeepFilter(recording.raw), plain(false), {
+        slowLeveler: true,
+      });
       break;
     case 'rnnoise':
       samples = await throughChain(recording.raw, {
