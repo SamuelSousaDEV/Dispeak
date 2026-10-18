@@ -49,6 +49,7 @@ import {
   type StreamStats,
   type WatchedStream,
 } from './voice-store';
+import { VOICE_BITRATE } from './voice-codec';
 
 type Connection = RpcConnection<typeof voiceClientSide, typeof voiceServerSide>;
 
@@ -97,11 +98,6 @@ const NATIVE_RESTART_DELAYS_MS = [1000, 2000, 4000];
  * through another channel and back costs nothing, a minimised window saves the decoding.
  */
 const HIDE_STREAM_DELAY_MS = 1500;
-/**
- * Opus target for a voice. Measured through a loopback (2026-10-16): at 64 kbps the voice lost
- * 2-3 dB between 4 and 8 kHz; at 128 it comes out as it went in. Browsers pick about 32.
- */
-const VOICE_BITRATE = 128_000;
 const SCREEN_AUDIO_BITRATE = 256_000;
 
 /**

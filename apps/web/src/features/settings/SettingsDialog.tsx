@@ -37,6 +37,7 @@ import { KeybindRow, OptionGroup, Slider, SoundRow, Toggle } from './controls';
 import { bindingFromEvent, KEYBIND_ACTIONS, KEYBIND_LABELS, type KeybindAction } from './keybinds';
 import { AddedGames, HiddenGames, PlayingNow } from './GamesSettings';
 import { VoiceLab } from '../voice-lab/VoiceLab';
+import { HearMyself } from './HearMyself';
 import { MicTest } from './MicTest';
 import { PasswordForm, ProfileTab } from './ProfileTab';
 import {
@@ -159,6 +160,7 @@ function VoiceInput() {
         onChange={(micGain) => updateSettings({ micGain })}
       />
       <MicTest />
+      <HearMyself />
     </>
   );
 }
@@ -770,7 +772,8 @@ function buildPages({ user, guild, onSignOut, goTo }: PageContext): PageEntry[] 
           id: 'input',
           title: 'ENTRADA',
           scope: 'device',
-          keywords: 'microfone dispositivo apertar para falar push to talk teste volume',
+          keywords:
+            'microfone dispositivo apertar para falar push to talk teste volume ouvir minha voz como me ouvem',
           render: () => <VoiceInput />,
         },
         {
