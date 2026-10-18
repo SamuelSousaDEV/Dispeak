@@ -317,6 +317,29 @@ fn ancestors(id: u32, parents: &HashMap<u32, u32>) -> Vec<u32> {
     found
 }
 
+/// Voice chats running now, and the processes the caller excluded.
+fn forbidden(excluded: &HashSet<u32>, running: &[processes::Process]) -> HashSet<u32> {
+    let mut forbidden: HashSet<u32> = excluded.clone();
+    for process in running {
+        let name = process.exe.to_lowercase();
+        let name = name.strip_suffix(".exe").unwrap_or(&name);
+        if VOICE_CHATS.contains(&name) {
+            forbidden.insert(process.pid);
+        }
+    }
+    forbidden
+}
+
+/// Whether capturing the tree of `target` would take a voice chat (or an excluded process) with
+/// it: a window of the shell, or of a launcher that started Discord, is not "a program alone".
+fn tree_holds_forbidden(target: u32, excluded: &HashSet<u32>) -> bool {
+    let running = processes::all();
+    let parents: HashMap<u32, u32> = running.iter().map(|p| (p.pid, p.parent)).collect();
+    forbidden(excluded, &running)
+        .iter()
+        .any(|&id| ancestors(id, &parents).contains(&target))
+}
+
 /// Everything that plays sound on the default output, except voice chats and `excluded`. A
 /// capture takes a whole process tree, so a program is left out when a voice chat descends from
 /// it (the shell starts everything), and when an ancestor is captured already (a game started by
@@ -325,14 +348,7 @@ fn add_playing(excluded: &HashSet<u32>, sources: &Sources, first: bool) -> Resul
     let playing = playing_now()?;
     let running = processes::all();
     let parents: HashMap<u32, u32> = running.iter().map(|p| (p.pid, p.parent)).collect();
-    let mut forbidden: HashSet<u32> = excluded.clone();
-    for process in &running {
-        let name = process.exe.to_lowercase();
-        let name = name.strip_suffix(".exe").unwrap_or(&name);
-        if VOICE_CHATS.contains(&name) {
-            forbidden.insert(process.pid);
-        }
-    }
+    let forbidden = forbidden(excluded, &running);
     let taken: HashSet<u32> = sources
         .lock()
         .map(|list| list.iter().map(|s| s.process_id).collect())
@@ -476,7 +492,8 @@ pub fn run(arguments: &[String]) -> i32 {
     if covering {
         target = display::find_covering(&excluded);
     }
-    if excluded.contains(&target) {
+    // A program whose tree holds a voice chat would bring the voices along: the mix leaves them out.
+    if excluded.contains(&target) || (target != 0 && tree_holds_forbidden(target, &excluded)) {
         target = 0;
     }
 

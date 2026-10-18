@@ -50,6 +50,12 @@ export const streamSenderSampleSchema = z.object({
   encoder: label.nullable(),
   /** Screen preset in use (`1080p60`). */
   preset: label.nullable(),
+  /**
+   * Where the stream's sound comes from: `program` (the shared program alone), `mix` (the PC
+   * without voice chats), `system` (everything, voice chats included), or `null` for none.
+   * Absent from apps before 0.13.0.
+   */
+  audio: z.enum(['program', 'mix', 'system']).nullable().default(null),
   ...machineLoad,
 });
 export type StreamSenderSample = z.infer<typeof streamSenderSampleSchema>;

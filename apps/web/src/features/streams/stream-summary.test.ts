@@ -24,6 +24,7 @@ const sender = (captureFps: number, sentFps: number): NonNullable<StreamSample['
   limitation: 'cpu',
   encoder: 'MediaFoundationVideoEncodeAccelerator',
   preset: '1080p60',
+  audio: 'program',
 });
 
 const viewer = (fps: number, freezes = 0): StreamSample['viewers'][number] => ({

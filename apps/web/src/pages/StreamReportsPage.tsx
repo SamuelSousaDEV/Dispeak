@@ -20,6 +20,13 @@ const PATHS: Record<StreamReportSummary['path'], string> = {
   native: 'CAPTURA NATIVA',
 };
 
+/** What `audio` of a sender sample means, in the words of the panel. */
+const AUDIO_SOURCES: Record<string, string> = {
+  program: 'SÓ O PROGRAMA',
+  mix: 'O PC, SEM CHAMADAS DE VOZ',
+  system: 'O PC INTEIRO (COM CHAMADAS)',
+};
+
 function duration(report: StreamReportSummary): string | null {
   if (!report.endedAt) return null;
   return clock((Date.parse(report.endedAt) - Date.parse(report.startedAt)) / 1000);
@@ -91,6 +98,7 @@ function Stages({ summary }: { summary: StreamSummary }) {
           ['POR QUADRO', millis(sender?.encodeMs ?? null)],
           ['LIMITE', sender?.limitation?.toUpperCase() ?? null],
           ['COMPRESSOR', sender?.encoder ?? null],
+          ['SOM', sender?.audio ? (AUDIO_SOURCES[sender.audio] ?? sender.audio) : null],
           ...loadRows(sender?.load),
         ]}
       />

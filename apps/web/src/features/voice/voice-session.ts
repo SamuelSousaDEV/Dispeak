@@ -1606,6 +1606,13 @@ export class VoiceSession {
       // The same numbers go to the media service, which keeps them as the stream's telemetry.
       const rpc = this.connection?.rpc;
       const preset = get().screen.preset;
+      const audio = !this.screenAudioProducer
+        ? null
+        : this.gameAudio
+          ? this.gameAudio.name
+            ? 'program'
+            : 'mix'
+          : 'system';
       if (this.screenProducer && !this.screenProducer.closed) {
         const result = collectOutboundStreamStats(
           await this.screenProducer.getStats(),
@@ -1627,6 +1634,7 @@ export class VoiceSession {
             limitation: own.limitation ?? null,
             encoder: own.encoder?.slice(0, 64) ?? null,
             preset,
+            audio,
             ...load,
           },
         });
@@ -1669,6 +1677,7 @@ export class VoiceSession {
               `ffmpeg · app ${desktop?.version ?? '?'}${this.engineProblem ? ` · ${this.engineProblem}` : ''}`
             ).slice(0, 64),
             preset,
+            audio,
             ...load,
           },
         });

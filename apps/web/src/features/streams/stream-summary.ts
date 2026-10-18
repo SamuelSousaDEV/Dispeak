@@ -71,6 +71,8 @@ export interface SenderSummary {
   encodeMs: number | null;
   limitation: string | null;
   encoder: string | null;
+  /** Where the sound came from (`program`, `mix`, `system`), when known. */
+  audio: string | null;
 }
 
 export interface ServerSummary {
@@ -117,6 +119,7 @@ function summarizeSender(samples: StreamSample[]): SenderSummary | null {
     encodeMs: median(sent.map((sample) => sample.encodeMs)),
     limitation: mostCommon(sent.map((sample) => sample.limitation)),
     encoder: mostCommon(sent.map((sample) => sample.encoder)),
+    audio: mostCommon(sent.map((sample) => sample.audio ?? null)),
   };
 }
 
