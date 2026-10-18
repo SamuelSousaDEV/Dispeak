@@ -33,6 +33,7 @@ import { startVoiceSounds } from '../sounds/sound-player';
 import { notifyMention } from '../unread/notify';
 import { applyUnreadEvent, useUnreadTitle } from '../unread/unread-store';
 import { useDesktopCallControls } from '../desktop/call-controls';
+import { useCornerNotices } from '../desktop/corner-notices';
 import { useGameDetection, useShareActivity } from '../desktop/games';
 import { useCloseToTray } from '../desktop/desktop';
 import { UpdateNotice } from '../desktop/UpdateNotice';
@@ -94,6 +95,7 @@ export function AppPage() {
   useCloseToTray();
   useDesktopCallControls(() => setDialog({ kind: 'settings', tab: 'voice' }));
   useGameDetection();
+  useCornerNotices();
   useShareActivity();
   useUnreadTitle();
   useEffect(() => startVoiceSounds(), []);

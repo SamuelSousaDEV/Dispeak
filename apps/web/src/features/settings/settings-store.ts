@@ -44,6 +44,13 @@ const settingsSchema = z.object({
   desktopNotifications: z.boolean(),
   /** Desktop app: the close button hides the window in the notification area. */
   closeToTray: z.boolean(),
+  /** Desktop app: notices in the corner of the screen (`desktop/corner-notices`). */
+  cornerNotices: z.object({
+    /** Someone opens the app. */
+    online: z.boolean(),
+    /** Someone enters a call or starts a stream, while the user is in none. */
+    calls: z.boolean(),
+  }),
   /** Desktop app: screen shares captured by the app itself, not the browser, where it can. */
   nativeCapture: z.boolean(),
   /** Last quality picked for a screen share; the share shortcut starts with it. */
@@ -88,7 +95,8 @@ export const defaultSettings: Settings = {
   selfMuted: false,
   selfDeafened: false,
   desktopNotifications: false,
-  closeToTray: false,
+  closeToTray: true,
+  cornerNotices: { online: true, calls: true },
   nativeCapture: true,
   sharePreset: '1080p60',
   soundsEnabled: true,
@@ -123,13 +131,14 @@ export const defaultSettings: Settings = {
 export const useSettingsStore = create<Settings>()(
   persist(() => defaultSettings, {
     name: 'frequencia.settings',
-    version: 7,
+    version: 8,
     migrate: (persisted, version) => {
       let stored = persisted as {
         noiseSuppression?: unknown;
         keybinds?: unknown;
         sharePreset?: unknown;
         nativeCapture?: unknown;
+        closeToTray?: unknown;
       } | null;
       if (!stored) return persisted;
       // Up to version 2 the suppression was a choice among four modes; now it is on or off.
@@ -165,6 +174,9 @@ export const useSettingsStore = create<Settings>()(
         }
         stored = rest;
       }
+      // Up to version 7 the X quit the app. Now it stays in the notification area, like
+      // Discord, so whoever opens the app stays reachable; the option turns it back.
+      if (version < 8) stored = { ...stored, closeToTray: true };
       return stored;
     },
     // Stored data may be stale or hand-edited: keep only what still validates. Shortcuts are

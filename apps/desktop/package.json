@@ -61,7 +61,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
-      "uninstallDisplayName": "Dispeaker"
+      "uninstallDisplayName": "Dispeaker",
+      "include": "build/installer.nsh"
     },
     "publish": [
       {

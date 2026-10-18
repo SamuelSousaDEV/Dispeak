@@ -9,10 +9,12 @@ import { serveGames, takeShareWindow } from './games';
 import { serveGpuUsage } from './gpu-usage';
 import { serveNativeCapture } from './native-capture';
 import { isAppUrl, isExternalLink } from './navigation';
+import { serveNotices } from './notices';
 import { applyBackgroundSwitches, keepProcessesResponsive } from './performance';
 import { pickSource } from './picker/picker';
 import { noteShareShortcut, takeShortcutShare } from './share-target';
 import { serveShortcuts } from './shortcuts';
+import { serveStartAtLogin, startedHidden } from './startup';
 import { serveThumbar } from './thumbar';
 import { serveTray } from './tray';
 import { serveUpdates } from './updater';
@@ -83,7 +85,8 @@ function createWindow(): BrowserWindow {
     },
   });
   window.removeMenu();
-  window.once('ready-to-show', () => window.show());
+  // Opened by Windows at login: the app waits in the notification area, online for friends.
+  if (!startedHidden) window.once('ready-to-show', () => window.show());
 
   const { webContents } = window;
   // The window shows the app and nothing else; other links go to the default browser.
@@ -118,7 +121,10 @@ function createWindow(): BrowserWindow {
   });
   serveUpdates(window);
   const call = serveCallState(window);
-  revealWindow = serveTray(window, call);
+  const reveal = serveTray(window, call);
+  revealWindow = reveal;
+  serveStartAtLogin(window);
+  serveNotices(window, reveal);
   serveThumbar(window, call);
   serveGpuUsage(window);
   serveGames(window);

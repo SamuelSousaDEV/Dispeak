@@ -23,7 +23,11 @@ export default defineConfig([
   {
     ...shared,
     // Sandboxed preload scripts are CommonJS.
-    entry: { preload: 'src/preload.ts', 'picker-preload': 'src/picker/preload.ts' },
+    entry: {
+      preload: 'src/preload.ts',
+      'picker-preload': 'src/picker/preload.ts',
+      'notice-preload': 'src/notice/preload.ts',
+    },
     format: ['cjs'],
     target: 'node22',
     platform: 'node',
@@ -31,7 +35,7 @@ export default defineConfig([
   },
   {
     ...shared,
-    entry: { picker: 'src/picker/renderer.ts' },
+    entry: { picker: 'src/picker/renderer.ts', notice: 'src/notice/renderer.ts' },
     format: ['iife'],
     target: 'chrome140',
     platform: 'browser',

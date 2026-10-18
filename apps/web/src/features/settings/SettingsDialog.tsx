@@ -1,4 +1,9 @@
-import { PERSON_DEFAULTS, type Guild, type Self } from '@frequencia/shared';
+import {
+  PERSON_DEFAULTS,
+  type DesktopStartAtLogin,
+  type Guild,
+  type Self,
+} from '@frequencia/shared';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/Button';
@@ -491,12 +496,65 @@ function Shortcuts() {
 function AppWindow() {
   const closeToTray = useSettingsStore((state) => state.closeToTray);
   return (
+    <>
+      <StartAtLogin />
+      <Toggle
+        label="O BOTÃO X MINIMIZA PARA A BANDEJA"
+        hint="Fechar a janela esconde o Dispeaker nos ícones ao lado do relógio em vez de sair: a chamada continua e os atalhos seguem valendo. O ícone acende enquanto ouvem você; clique nele para voltar, ou com o botão direito para mutar, ensurdecer ou sair."
+        checked={closeToTray}
+        onChange={(value) => updateSettings({ closeToTray: value })}
+      />
+    </>
+  );
+}
+
+/** Kept by Windows, not by the page: asked when shown, so a change made there shows here. */
+function StartAtLogin() {
+  const bridge = desktop?.startAtLogin;
+  const [state, setState] = useState<DesktopStartAtLogin | null>(null);
+  useEffect(() => {
+    let current = true;
+    bridge?.get().then(
+      (answer) => current && setState(answer),
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
+  }, [bridge]);
+  if (!bridge || !state?.available) return null;
+  return (
     <Toggle
-      label="O BOTÃO X MINIMIZA PARA A BANDEJA"
-      hint="Fechar a janela esconde o Dispeaker nos ícones ao lado do relógio em vez de sair: a chamada continua e os atalhos seguem valendo. O ícone acende enquanto ouvem você; clique nele para voltar, ou com o botão direito para mutar, ensurdecer ou sair."
-      checked={closeToTray}
-      onChange={(value) => updateSettings({ closeToTray: value })}
+      label="ABRIR O DISPEAKER AO LIGAR O COMPUTADOR"
+      hint="Ele abre escondido nos ícones ao lado do relógio, e seus amigos veem que você está por aqui."
+      checked={state.enabled}
+      onChange={(value) => attempt(() => bridge.set(value).then(setState))}
     />
+  );
+}
+
+function CornerNotices() {
+  const notices = useSettingsStore((state) => state.cornerNotices);
+  const change = (part: Partial<typeof notices>) =>
+    updateSettings({ cornerNotices: { ...notices, ...part } });
+  return (
+    <>
+      <p className="text-xs text-muted">
+        Um aviso pequeno no canto de baixo da tela, por cima do jogo, some sozinho em alguns
+        segundos. Clique nele para ir até a pessoa. Em “não perturbe”, nenhum aparece.
+      </p>
+      <Toggle
+        label="QUANDO ALGUÉM ABRE O DISPEAKER"
+        checked={notices.online}
+        onChange={(value) => change({ online: value })}
+      />
+      <Toggle
+        label="QUANDO ALGUÉM ENTRA NUMA CHAMADA OU TRANSMITE"
+        hint="Só enquanto você não está em nenhuma chamada. O aviso tem o botão para entrar."
+        checked={notices.calls}
+        onChange={(value) => change({ calls: value })}
+      />
+    </>
   );
 }
 
@@ -652,6 +710,13 @@ function buildPages({ user, guild, onSignOut, goTo }: PageContext): PageEntry[] 
           title: 'IMAGENS',
           keywords: 'foto avatar banner capa cor',
           render: () => null,
+        },
+        {
+          id: 'notices',
+          title: 'AVISOS NO CANTO DA TELA',
+          scope: 'device',
+          keywords: 'notificação aviso steam online entrou chamada transmissão',
+          render: () => <CornerNotices />,
         },
         {
           id: 'about',
@@ -862,7 +927,7 @@ function buildPages({ user, guild, onSignOut, goTo }: PageContext): PageEntry[] 
           id: 'window',
           title: 'JANELA',
           scope: 'device',
-          keywords: 'bandeja fechar minimizar ícone',
+          keywords: 'bandeja fechar minimizar ícone iniciar ligar computador windows',
           render: () => <AppWindow />,
         },
         {

@@ -19,6 +19,10 @@ import {
   DESKTOP_NATIVE_CAPTURE_STOP,
   DESKTOP_SET_CALL_STATE,
   DESKTOP_SET_CLOSE_TO_TRAY,
+  DESKTOP_NOTICE_CLICKED,
+  DESKTOP_SHOW_NOTICE,
+  DESKTOP_GET_START_AT_LOGIN,
+  DESKTOP_SET_START_AT_LOGIN,
   DESKTOP_SET_SHORTCUTS,
   DESKTOP_SHORTCUT,
   DESKTOP_UPDATE_READY,
@@ -31,7 +35,9 @@ import {
   desktopNativeCaptureChoiceSchema,
   desktopNativeCaptureProbeSchema,
   desktopNativeCaptureStatsSchema,
+  desktopNoticeClickSchema,
   desktopShortcutEventSchema,
+  desktopStartAtLoginSchema,
   desktopUpdateSchema,
   type DesktopBridge,
   type DesktopShortcutsResult,
@@ -70,6 +76,25 @@ const bridge: DesktopBridge = {
   installUpdate: () => ipcRenderer.invoke(DESKTOP_INSTALL_UPDATE) as Promise<void>,
   setCloseToTray: (enabled) =>
     ipcRenderer.invoke(DESKTOP_SET_CLOSE_TO_TRAY, { enabled }) as Promise<void>,
+  notices: {
+    show: (notice) => ipcRenderer.send(DESKTOP_SHOW_NOTICE, notice),
+    onClick: (listener) => {
+      const handler = (_event: unknown, payload: unknown) => {
+        const parsed = desktopNoticeClickSchema.safeParse(payload);
+        if (parsed.success) listener(parsed.data.id);
+      };
+      ipcRenderer.on(DESKTOP_NOTICE_CLICKED, handler);
+      return () => ipcRenderer.removeListener(DESKTOP_NOTICE_CLICKED, handler);
+    },
+  },
+  startAtLogin: {
+    get: async () =>
+      desktopStartAtLoginSchema.parse(await ipcRenderer.invoke(DESKTOP_GET_START_AT_LOGIN)),
+    set: async (enabled) =>
+      desktopStartAtLoginSchema.parse(
+        await ipcRenderer.invoke(DESKTOP_SET_START_AT_LOGIN, { enabled }),
+      ),
+  },
   setCallState: (state) => ipcRenderer.send(DESKTOP_SET_CALL_STATE, state),
   games: {
     watch: (added, listener) => {

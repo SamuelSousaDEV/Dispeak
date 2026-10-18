@@ -27,6 +27,16 @@ export const DESKTOP_INSTALL_UPDATE = 'desktop:install-update';
 /** Page → app: whether the window's close button hides the app in the notification area. */
 export const DESKTOP_SET_CLOSE_TO_TRAY = 'desktop:set-close-to-tray';
 
+/** Page → app: whether Windows opens the app at login. */
+export const DESKTOP_GET_START_AT_LOGIN = 'desktop:get-start-at-login';
+/** Page → app: turn that on or off; answers the state after the change. */
+export const DESKTOP_SET_START_AT_LOGIN = 'desktop:set-start-at-login';
+
+/** Page → app: a short notice in the corner of the screen, over other programs. */
+export const DESKTOP_SHOW_NOTICE = 'desktop:show-notice';
+/** App → page: the user clicked a notice. */
+export const DESKTOP_NOTICE_CLICKED = 'desktop:notice-clicked';
+
 /** Page → app: how the user is in a call, for the notification area and the taskbar. */
 export const DESKTOP_SET_CALL_STATE = 'desktop:set-call-state';
 /** App → page: a button of the notification area or of the taskbar thumbnail was used. */
@@ -91,6 +101,32 @@ export const desktopUpdateSchema = z.object({ version: z.string().min(1).max(32)
 export type DesktopUpdate = z.infer<typeof desktopUpdateSchema>;
 
 export const desktopCloseToTraySchema = z.object({ enabled: z.boolean() });
+
+/**
+ * A notice in the corner of the screen, like Steam's: who, what happened, and what a click does.
+ * The app shows one at a time for a few seconds, without taking the focus from a game.
+ */
+export const desktopNoticeSchema = z.object({
+  /** Handed back to the page when the notice is clicked. */
+  id: z.string().min(1).max(200),
+  /** The person, as the app shows their name. */
+  title: z.string().min(1).max(80),
+  text: z.string().min(1).max(160),
+  /** Address of the person's picture, on the app's own server; `null` shows the initial. */
+  picture: z.string().max(500).nullable(),
+  /** What a click does, as a bracketed button (`ENTRAR`); `null` just opens the app. */
+  action: z.string().min(1).max(24).nullable(),
+});
+export type DesktopNotice = z.infer<typeof desktopNoticeSchema>;
+
+export const desktopNoticeClickSchema = z.object({ id: z.string().min(1).max(200) });
+
+export const desktopStartAtLoginSchema = z.object({
+  enabled: z.boolean(),
+  /** `false` in a copy that is not installed (development), where it cannot be set. */
+  available: z.boolean(),
+});
+export type DesktopStartAtLogin = z.infer<typeof desktopStartAtLoginSchema>;
 
 export const desktopCallStateSchema = z.object({
   /** Name of the voice channel the user is in, or `null` outside a call. */
@@ -272,6 +308,19 @@ export interface DesktopBridge {
    * quitting. Absent in apps older than 0.6.0.
    */
   setCloseToTray?(enabled: boolean): Promise<void>;
+  /** Notices in the corner of the screen. Absent in apps older than 0.13.0. */
+  notices?: {
+    show(notice: DesktopNotice): void;
+    /** Called with the id of a clicked notice. Returns the function that stops listening. */
+    onClick(listener: (id: string) => void): () => void;
+  };
+  /**
+   * Opening with Windows, hidden in the notification area. Absent in apps older than 0.13.0.
+   */
+  startAtLogin?: {
+    get(): Promise<DesktopStartAtLogin>;
+    set(enabled: boolean): Promise<DesktopStartAtLogin>;
+  };
   /**
    * What the notification area icon and the taskbar thumbnail buttons show. Absent in apps
    * older than 0.12.0.
