@@ -57,6 +57,8 @@ const guild = (overrides: Partial<Guild> = {}): Guild => ({
     streamStop: null,
     watchStart: null,
     watchStop: null,
+    viewerJoin: null,
+    viewerLeave: null,
   },
   ...overrides,
 });

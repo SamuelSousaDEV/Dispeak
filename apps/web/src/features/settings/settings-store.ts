@@ -100,6 +100,8 @@ export const defaultSettings: Settings = {
     streamStop: true,
     watchStart: true,
     watchStop: true,
+    viewerJoin: true,
+    viewerLeave: true,
   },
   customSounds: {
     join: null,
@@ -108,6 +110,8 @@ export const defaultSettings: Settings = {
     streamStop: null,
     watchStart: null,
     watchStop: null,
+    viewerJoin: null,
+    viewerLeave: null,
   },
   keybinds: DEFAULT_KEYBINDS,
 };

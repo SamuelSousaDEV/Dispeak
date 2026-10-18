@@ -89,4 +89,20 @@ describe('soundEventsFor', () => {
       'streamStop',
     ]);
   });
+
+  it('tells the streamer when someone opens and closes their stream', () => {
+    const sharing = (viewers: string[], peers = [peer('a'), peer('b')]) => ({
+      ...state('connected', peers, 'live'),
+      screenViewers: viewers,
+    });
+    expect(soundEventsFor(sharing([]), sharing(['a']))).toEqual(['viewerJoin']);
+    expect(soundEventsFor(sharing(['a']), sharing(['a', 'b']))).toEqual(['viewerJoin']);
+    expect(soundEventsFor(sharing(['a', 'b']), sharing(['b']))).toEqual(['viewerLeave']);
+    // A viewer leaving the call has the leave sound only.
+    expect(soundEventsFor(sharing(['a', 'b']), sharing(['b'], [peer('b')]))).toEqual(['leave']);
+    // Ending the stream ends every viewing: one sound.
+    expect(
+      soundEventsFor(sharing(['a']), { ...state('connected', [peer('a'), peer('b')]) }),
+    ).toEqual(['streamStop']);
+  });
 });

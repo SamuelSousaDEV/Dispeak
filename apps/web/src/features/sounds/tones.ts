@@ -37,6 +37,15 @@ const TONES: Record<SoundEvent, Note[]> = {
     { frequency: 880, duration: 0.06 },
     { frequency: 587.33, duration: 0.12 },
   ],
+  // Higher and shorter than the rest: a small tap while the streamer plays.
+  viewerJoin: [
+    { frequency: 1174.66, duration: 0.05 },
+    { frequency: 1567.98, duration: 0.09 },
+  ],
+  viewerLeave: [
+    { frequency: 1567.98, duration: 0.05 },
+    { frequency: 1174.66, duration: 0.09 },
+  ],
 };
 
 /** Mono 16-bit samples of a sequence of sine notes, each with a soft attack and decay. */

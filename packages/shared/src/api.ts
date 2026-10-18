@@ -199,6 +199,9 @@ export const GUILD_SOUND_EVENTS = [
   /** The local user starts or stops watching someone's stream. */
   'watchStart',
   'watchStop',
+  /** Someone starts or stops watching the local user's own stream. */
+  'viewerJoin',
+  'viewerLeave',
 ] as const;
 export const guildSoundEventSchema = z.enum(GUILD_SOUND_EVENTS);
 export type GuildSoundEvent = z.infer<typeof guildSoundEventSchema>;
@@ -285,6 +288,8 @@ export const guildSchema = z.object({
     streamStop: guildSoundSchema.nullable(),
     watchStart: guildSoundSchema.nullable(),
     watchStop: guildSoundSchema.nullable(),
+    viewerJoin: guildSoundSchema.nullable(),
+    viewerLeave: guildSoundSchema.nullable(),
   }),
 });
 export type Guild = z.infer<typeof guildSchema>;

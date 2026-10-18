@@ -11,6 +11,8 @@ export const SOUND_LABELS: Record<SoundEvent, string> = {
   streamStop: 'Uma transmissão termina',
   watchStart: 'Você começa a assistir a uma transmissão',
   watchStop: 'Você para de assistir a uma transmissão',
+  viewerJoin: 'Alguém abre a sua transmissão',
+  viewerLeave: 'Alguém fecha a sua transmissão',
 };
 
 /** The part of the voice state the notification sounds depend on. */
@@ -22,6 +24,8 @@ export interface SoundSnapshot {
   screen: { status: 'off' | 'starting' | 'live' };
   /** Streams the local user is watching, by the streamer's session id. */
   watching?: Record<string, unknown>;
+  /** Who is watching the local user's own stream, by session id. */
+  screenViewers?: string[];
 }
 
 const inCall = (status: SoundSnapshot['status']) =>
@@ -65,5 +69,16 @@ export function soundEventsFor(previous: SoundSnapshot, next: SoundSnapshot): So
     return peer !== undefined && isStreaming(peer);
   };
   if (Object.keys(before).some((id) => !(id in after) && stillLive(id))) events.add('watchStop');
+
+  // The streamer hears people open and close their stream. Someone who leaves the call has the
+  // leave sound already, and a stream that ends takes every viewer with it.
+  if (previous.screen.status === 'live' && next.screen.status === 'live') {
+    const viewersBefore = new Set(previous.screenViewers ?? []);
+    const viewersAfter = new Set(next.screenViewers ?? []);
+    if ([...viewersAfter].some((id) => !viewersBefore.has(id))) events.add('viewerJoin');
+    if ([...viewersBefore].some((id) => !viewersAfter.has(id) && next.peers[id])) {
+      events.add('viewerLeave');
+    }
+  }
   return [...events];
 }

@@ -97,6 +97,8 @@ describe('guild notification sounds', () => {
       streamStop: null,
       watchStart: null,
       watchStop: null,
+      viewerJoin: null,
+      viewerLeave: null,
     });
     expect((await get(owner, guild.id, 'join')).statusCode).toBe(404);
   });
@@ -121,6 +123,8 @@ describe('guild notification sounds', () => {
       streamStop: null,
       watchStart: null,
       watchStop: null,
+      viewerJoin: null,
+      viewerLeave: null,
     });
     expect((await guildOf(member, guild.id)).sounds.join).toEqual(sound);
 
