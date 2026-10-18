@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/Button';
 import { Loading } from '../../components/Loading';
-import { toWav } from '../voice-lab/render';
 import { LevelBar } from '../voice/components/MicMeter';
-import { recordAsHeard } from '../voice/hear-myself';
+import { recordAsHeard, toWav } from '../voice/hear-myself';
 import type { NoiseEngine } from '../voice/microphone';
 import { useSettingsStore } from './settings-store';
 

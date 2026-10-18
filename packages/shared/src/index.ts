@@ -12,4 +12,3 @@ export * from './stream-telemetry';
 export * from './user-settings';
 export * from './native-host';
 export * from './meetings';
-export * from './voice-lab';

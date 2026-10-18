@@ -1,0 +1,1 @@
+DROP TABLE "voice_lab_results" CASCADE;

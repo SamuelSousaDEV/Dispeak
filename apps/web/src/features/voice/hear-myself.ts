@@ -1,4 +1,4 @@
-import recorderUrl from '../voice-lab/recorder.worklet.js?url';
+import recorderUrl from './recorder.worklet.js?url';
 import { openMicrophone, type MicrophoneSettings, type NoiseEngine } from './microphone';
 import { withCallOpus } from './voice-codec';
 
@@ -81,7 +81,7 @@ export async function recordAsHeard(
     void sink.play().catch(() => undefined);
     await context.audioWorklet.addModule(recorderUrl);
     await context.resume();
-    const recorder = new AudioWorkletNode(context, 'voice-lab-recorder', {
+    const recorder = new AudioWorkletNode(context, 'pcm-recorder', {
       numberOfInputs: 1,
       numberOfOutputs: 0,
       channelCount: 1,
@@ -122,4 +122,32 @@ export async function recordAsHeard(
     microphone.close();
     void context.close().catch(() => undefined);
   }
+}
+
+/** 16-bit mono WAV of `samples`. */
+export function toWav(samples: Float32Array, sampleRate = SAMPLE_RATE): Blob {
+  const header = new DataView(new ArrayBuffer(44));
+  const text = (position: number, value: string) => {
+    for (let index = 0; index < value.length; index++) {
+      header.setUint8(position + index, value.charCodeAt(index));
+    }
+  };
+  const pcm = new Int16Array(samples.length);
+  for (const [index, sample] of samples.entries()) {
+    pcm[index] = Math.round(Math.max(-1, Math.min(1, sample)) * 32_767);
+  }
+  text(0, 'RIFF');
+  header.setUint32(4, 36 + pcm.byteLength, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  header.setUint32(16, 16, true);
+  header.setUint16(20, 1, true);
+  header.setUint16(22, 1, true);
+  header.setUint32(24, sampleRate, true);
+  header.setUint32(28, sampleRate * 2, true);
+  header.setUint16(32, 2, true);
+  header.setUint16(34, 16, true);
+  text(36, 'data');
+  header.setUint32(40, pcm.byteLength, true);
+  return new Blob([header, pcm], { type: 'audio/wav' });
 }

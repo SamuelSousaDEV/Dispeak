@@ -19,7 +19,6 @@ import type { UserSettingsService } from './modules/users/settings';
 import type { MeetingService } from './modules/meetings/service';
 import type { MediaLink } from './modules/voice/media-link';
 import type { StreamReportService } from './modules/streams/service';
-import type { VoiceLabService } from './modules/voice-lab/service';
 import type { VoiceAccess } from './modules/voice/voice-access';
 import type { VoiceStateStore } from './modules/voice/voice-state';
 import type { Redis } from './redis';
@@ -47,7 +46,6 @@ export interface AppContext {
   media: MediaLink;
   hub: GatewayHub;
   streamReports: StreamReportService;
-  voiceLab: VoiceLabService;
   meetings: MeetingService;
 }
 
